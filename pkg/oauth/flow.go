@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"time"
 
-	"git.mikedev101.cc/MikeDEV/accounts/pkg/sanitizer"
-	"git.mikedev101.cc/MikeDEV/accounts/pkg/types"
+	"github.com/cloudlink-omega/accounts/pkg/sanitizer"
+	"github.com/cloudlink-omega/accounts/pkg/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/oklog/ulid/v2"
 	"golang.org/x/oauth2"

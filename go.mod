@@ -1,4 +1,4 @@
-module git.mikedev101.cc/MikeDEV/accounts
+module github.com/cloudlink-omega/accounts
 
 go 1.23.2
 

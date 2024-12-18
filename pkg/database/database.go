@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"log"
 
-	"git.mikedev101.cc/MikeDEV/accounts/pkg/types"
+	"github.com/cloudlink-omega/accounts/pkg/types"
 	"github.com/huandu/go-sqlbuilder"
 )
 

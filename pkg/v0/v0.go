@@ -1,8 +1,8 @@
 package v0
 
 import (
-	"git.mikedev101.cc/MikeDEV/accounts/pkg/authorization"
-	"git.mikedev101.cc/MikeDEV/accounts/pkg/database"
+	"github.com/cloudlink-omega/accounts/pkg/authorization"
+	"github.com/cloudlink-omega/accounts/pkg/database"
 	"github.com/gofiber/fiber/v2"
 )
 

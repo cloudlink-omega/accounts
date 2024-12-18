@@ -3,7 +3,7 @@ package v0
 import (
 	"time"
 
-	"git.mikedev101.cc/MikeDEV/accounts/pkg/types"
+	"github.com/cloudlink-omega/accounts/pkg/types"
 	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
 	"github.com/oklog/ulid/v2"

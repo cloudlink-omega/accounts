@@ -1,9 +1,9 @@
 package oauth
 
 import (
-	"git.mikedev101.cc/MikeDEV/accounts/pkg/authorization"
-	"git.mikedev101.cc/MikeDEV/accounts/pkg/database"
-	"git.mikedev101.cc/MikeDEV/accounts/pkg/types"
+	"github.com/cloudlink-omega/accounts/pkg/authorization"
+	"github.com/cloudlink-omega/accounts/pkg/database"
+	"github.com/cloudlink-omega/accounts/pkg/types"
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"

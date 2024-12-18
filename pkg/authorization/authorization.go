@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"git.mikedev101.cc/MikeDEV/accounts/pkg/database"
-	"git.mikedev101.cc/MikeDEV/accounts/pkg/types"
+	"github.com/cloudlink-omega/accounts/pkg/database"
+	"github.com/cloudlink-omega/accounts/pkg/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 )

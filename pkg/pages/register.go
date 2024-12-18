@@ -1,7 +1,7 @@
 package pages
 
 import (
-	"git.mikedev101.cc/MikeDEV/accounts/pkg/sanitizer"
+	"github.com/cloudlink-omega/accounts/pkg/sanitizer"
 	"github.com/gofiber/fiber/v2"
 )
 
