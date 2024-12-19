@@ -40,7 +40,7 @@ func (s *OAuth) begin_oauth_flow(c *fiber.Ctx) error {
 	if s.Auth.Valid(c) {
 		params := url.Values{}
 		params.Add("redirect", redirect)
-		return c.Redirect(fmt.Sprintf("%s?%s", s.RouterPath, params.Encode()), http.StatusSeeOther)
+		return c.Redirect(fmt.Sprintf("%s?%s", s.ServerURL, params.Encode()), http.StatusSeeOther)
 	}
 
 	// Create state JWT that will expire in half an hour
@@ -141,24 +141,7 @@ func (s *OAuth) callback_oauth_flow(c *fiber.Ctx) error {
 	}
 
 	// Create a new JWT for this user. Session expires in 24 hours.
-	expiration := time.Now().Add(24 * time.Hour)
-	token := s.Auth.Create(&types.Claims{
-		Email:            user.Email,
-		Username:         user.Username,
-		ULID:             user.ID,
-		IdentityProvider: identity_provider,
-	}, expiration)
-
-	// Finally, we set the client cookie for "token" as the JWT we just generated
-	// we also set an expiry time which is the same as the token itself
-	c.Cookie(&fiber.Cookie{
-		Name:     "clomega-authorization",
-		Value:    token,
-		Expires:  expiration,
-		HTTPOnly: true, // Set to true so JavaScript can't access the cookie
-		Secure:   s.EnforceHTTPS,
-		Path:     "/",
-	})
+	s.SetCookie(user, identity_provider, time.Now().Add(24*time.Hour), c)
 
 	// Handle redirect
 	if state_data.Redirect != "" {

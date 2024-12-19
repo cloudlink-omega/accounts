@@ -1,8 +1,11 @@
 package oauth
 
 import (
+	"time"
+
 	"github.com/cloudlink-omega/accounts/pkg/authorization"
 	"github.com/cloudlink-omega/accounts/pkg/database"
+	"github.com/cloudlink-omega/accounts/pkg/domain"
 	"github.com/cloudlink-omega/accounts/pkg/types"
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/oauth2"
@@ -41,6 +44,24 @@ func New(router_path string, server_url string, enforce_https bool, api_domain s
 
 	// Return created instance
 	return s
+}
+
+func (s *OAuth) SetCookie(user *types.User, identity_provider string, expiration time.Time, c *fiber.Ctx) {
+	token := s.Auth.Create(&types.Claims{
+		Email:            user.Email,
+		Username:         user.Username,
+		ULID:             user.ID,
+		IdentityProvider: identity_provider,
+	}, expiration)
+	c.Cookie(&fiber.Cookie{
+		Name:     "clomega-authorization",
+		Value:    token,
+		Path:     "/",
+		Expires:  expiration,
+		Secure:   s.EnforceHTTPS,
+		Domain:   domain.GetDomain(c.Hostname()),
+		SameSite: fiber.CookieSameSiteNoneMode,
+	})
 }
 
 func (s *OAuth) Discord(client_id string, client_secret string) {

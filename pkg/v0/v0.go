@@ -1,8 +1,11 @@
 package v0
 
 import (
+	"time"
+
 	"github.com/cloudlink-omega/accounts/pkg/authorization"
 	"github.com/cloudlink-omega/accounts/pkg/database"
+	"github.com/cloudlink-omega/accounts/pkg/domain"
 	"github.com/cloudlink-omega/accounts/pkg/types"
 	"github.com/gofiber/fiber/v2"
 )
@@ -44,4 +47,33 @@ func New(router_path string, enforce_https bool, api_domain string, server_url s
 
 	// Return created instance
 	return v
+}
+
+func (v *APIv0) SetCookie(user *types.User, expiration time.Time, c *fiber.Ctx) {
+	token := v.Auth.Create(&types.Claims{
+		Email:            user.Email,
+		Username:         user.Username,
+		ULID:             user.ID,
+		IdentityProvider: "local",
+	}, expiration)
+	c.Cookie(&fiber.Cookie{
+		Name:     "clomega-authorization",
+		Value:    token,
+		Path:     "/",
+		Expires:  expiration,
+		Secure:   v.EnforceHTTPS,
+		Domain:   domain.GetDomain(c.Hostname()),
+		SameSite: fiber.CookieSameSiteNoneMode,
+	})
+}
+
+func (v *APIv0) ClearCookie(c *fiber.Ctx) {
+	c.Cookie(&fiber.Cookie{
+		Name:     "clomega-authorization",
+		Path:     "/",
+		Expires:  time.Now().Add(-1 * time.Hour),
+		Secure:   true,
+		Domain:   domain.GetDomain(c.Hostname()),
+		SameSite: fiber.CookieSameSiteNoneMode,
+	})
 }

@@ -2,15 +2,15 @@ package v0
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"math/rand"
 
-	"github.com/pquerna/otp/totp"
-
 	"github.com/cloudlink-omega/accounts/pkg/constants"
 	"github.com/cloudlink-omega/accounts/pkg/email"
 	"github.com/cloudlink-omega/accounts/pkg/types"
+	"github.com/pquerna/otp/totp"
 
 	scrypt "github.com/elithrar/simple-scrypt"
 
@@ -18,6 +18,13 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/oklog/ulid/v2"
 )
+
+type Credentials struct {
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	TOTP     string `json:"totp"`
+}
 
 func (v *APIv0) LoginEndpoint(c *fiber.Ctx) error {
 
@@ -27,20 +34,23 @@ func (v *APIv0) LoginEndpoint(c *fiber.Ctx) error {
 		return c.SendString("already logged in")
 	}
 
+	// Try to read the contents, accept JSON or form data
+	var creds Credentials
+	creds.Email = c.FormValue("email")
+	creds.Password = c.FormValue("password")
+	creds.TOTP = c.FormValue("totp")
+	if c.Body() != nil {
+		json.Unmarshal(c.Body(), &creds)
+	}
+
 	// Require email field
-	if c.FormValue("email") == "" {
+	if creds.Email == "" {
 		c.Status(fiber.StatusBadRequest)
 		return c.SendString("missing email field")
 	}
 
-	// Require password field
-	if c.FormValue("password") == "" {
-		c.Status(fiber.StatusBadRequest)
-		return c.SendString("missing password field")
-	}
-
 	// Check if the account exists.
-	user, err := v.DB.GetUserByEmail(c.FormValue("email"))
+	user, err := v.DB.GetUserByEmail(creds.Email)
 	if err != nil {
 		panic(err)
 	}
@@ -55,8 +65,20 @@ func (v *APIv0) LoginEndpoint(c *fiber.Ctx) error {
 		return c.SendString("use oauth to log in")
 	}
 
+	// Require password field
+	if creds.Password == "" {
+		c.Status(fiber.StatusBadRequest)
+		return c.SendString("missing password field")
+	}
+
+	// Check if the password has six numbers at the end (legacy client compatibility). If so, read it as TOTP and trim it from the password.
+	if totp, err := strconv.Atoi(creds.Password[len(creds.Password)-6:]); err == nil {
+		creds.TOTP = fmt.Sprintf("%06d", totp)
+		creds.Password = creds.Password[:len(creds.Password)-6]
+	}
+
 	// Verify password
-	if scrypt.CompareHashAndPassword([]byte(user.Password), []byte(c.FormValue("password"))) != nil {
+	if scrypt.CompareHashAndPassword([]byte(user.Password), []byte(creds.Password)) != nil {
 		c.Status(fiber.StatusUnauthorized)
 		return c.SendString("invalid password")
 	}
@@ -65,7 +87,7 @@ func (v *APIv0) LoginEndpoint(c *fiber.Ctx) error {
 	if user.State.Read(constants.USER_IS_TOTP_ENABLED) {
 
 		// Require TOTP
-		if c.FormValue("totp") == "" || len(c.FormValue("totp")) != 6 {
+		if creds.TOTP == "" || len(creds.TOTP) != 6 {
 			c.Status(fiber.StatusBadRequest)
 			return c.SendString("totp required")
 		}
@@ -77,32 +99,14 @@ func (v *APIv0) LoginEndpoint(c *fiber.Ctx) error {
 		}
 
 		// Verify the TOTP
-		if !totp.Validate(c.FormValue("totp"), secret) {
+		if !totp.Validate(creds.TOTP, secret) {
 			c.Status(fiber.StatusUnauthorized)
 			return c.SendString("invalid code")
 		}
 	}
 
 	// Create a new JWT for this user. Session expires in 24 hours.
-	expiration := time.Now().Add(24 * time.Hour)
-	token := v.Auth.Create(&types.Claims{
-		Email:            user.Email,
-		Username:         user.Username,
-		ULID:             user.ID,
-		IdentityProvider: "local",
-	}, expiration)
-
-	// Finally, we set the client cookie for "token" as the JWT we just generated
-	// we also set an expiry time which is the same as the token itself
-	c.Cookie(&fiber.Cookie{
-		Name:     "clomega-authorization",
-		Value:    token,
-		Expires:  expiration,
-		HTTPOnly: true, // Set to true so JavaScript can't access the cookie
-		Secure:   v.EnforceHTTPS,
-		SameSite: fiber.CookieSameSiteLaxMode,
-		Domain:   v.APIDomain,
-	})
+	v.SetCookie(user, time.Now().Add(24*time.Hour), c)
 
 	// Return "OK"
 	return c.SendString("OK")
@@ -116,14 +120,33 @@ func (v *APIv0) RegisterEndpoint(c *fiber.Ctx) error {
 		return c.SendString("already logged in")
 	}
 
+	// Try to read the contents, accept JSON or form data
+	var creds Credentials
+	creds.Email = c.FormValue("email")
+	creds.Password = c.FormValue("password")
+	creds.Username = c.FormValue("username")
+	if c.Body() != nil {
+		json.Unmarshal(c.Body(), &creds)
+	}
+
 	// Check if the email provided already exists.
-	if user, err := v.DB.GetUserByEmail(c.FormValue("email")); err == nil && user != nil {
+	if user, err := v.DB.GetUserByEmail(creds.Email); err == nil && user != nil {
 		c.Status(fiber.ErrConflict.Code)
 		return c.SendString("email already in use")
+	} else if err != nil {
+		panic(err)
+	}
+
+	// Check if the username provided already exists.
+	if exists, err := v.DB.DoesNameExist(creds.Username); err == nil && exists {
+		c.Status(fiber.ErrConflict.Code)
+		return c.SendString("username already in use")
+	} else if err != nil {
+		panic(err)
 	}
 
 	// Hash the password using scrypt
-	hash, err := scrypt.GenerateFromPassword([]byte(c.FormValue("password")), scrypt.DefaultParams)
+	hash, err := scrypt.GenerateFromPassword([]byte(creds.Password), scrypt.DefaultParams)
 	if err != nil {
 		panic(err)
 	}
@@ -131,8 +154,8 @@ func (v *APIv0) RegisterEndpoint(c *fiber.Ctx) error {
 	userid := ulid.Make()
 	user := &types.User{
 		ID:       userid.String(),
-		Username: c.FormValue("username"),
-		Email:    c.FormValue("email"),
+		Username: creds.Username,
+		Email:    creds.Email,
 		Password: string(hash),
 	}
 
@@ -141,25 +164,7 @@ func (v *APIv0) RegisterEndpoint(c *fiber.Ctx) error {
 	}
 
 	// Create a new JWT for this user. Session expires in 24 hours.
-	expiration := time.Now().Add(24 * time.Hour)
-	token := v.Auth.Create(&types.Claims{
-		Email:            user.Email,
-		Username:         user.Username,
-		ULID:             user.ID,
-		IdentityProvider: "local",
-	}, expiration)
-
-	// Finally, we set the client cookie for "token" as the JWT we just generated
-	// we also set an expiry time which is the same as the token itself
-	c.Cookie(&fiber.Cookie{
-		Name:     "clomega-authorization",
-		Value:    token,
-		Expires:  expiration,
-		HTTPOnly: true, // Set to true so JavaScript can't access the cookie
-		Secure:   v.EnforceHTTPS,
-		SameSite: fiber.CookieSameSiteLaxMode,
-		Domain:   v.APIDomain,
-	})
+	v.SetCookie(user, time.Now().Add(24*time.Hour), c)
 
 	// Generate a random 6-digit verification code
 	code := fmt.Sprintf("%06d", rand.Intn(1000000))
@@ -195,14 +200,7 @@ func (v *APIv0) LogoutEndpoint(c *fiber.Ctx) error {
 	}
 
 	// Destroy the session by setting the cookie to expire
-	c.Cookie(&fiber.Cookie{
-		Name:     "clomega-authorization",
-		Expires:  time.Now(),
-		HTTPOnly: true,
-		Secure:   v.EnforceHTTPS,
-		SameSite: fiber.CookieSameSiteLaxMode,
-		Domain:   v.APIDomain,
-	})
+	v.ClearCookie(c)
 
 	// Done
 	return c.SendString("OK")
