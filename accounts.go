@@ -95,6 +95,9 @@ func New(
 		APIv0: v0.New(router_path, enforce_https, api_domain, server_url, session_key, accounts_db, email_config, server_name),
 	}
 
+	// Link Pages to OAuth providers
+	srv.Page.Providers = srv.OAuth.Providers
+
 	// Initialize template engine
 	engine := html.NewFileSystem(http.FS(embedded_templates), ".html")
 

@@ -388,11 +388,21 @@
 
             // Hide the loading overlay
             $(`#loadingOverlay`)[0].classList.add("hidden");
-            if (response.ok || message == "OK") {
+            if (response.ok) {
                 $(`#green_message`)[0].classList.remove("hidden");
                 $(`#green_message`)[0].textContent = "Account registered and logged in successfully!";
-                $(`#register`)[0].classList.add("hidden");
-                $(`#verify_email`)[0].classList.remove("hidden");
+                
+                // Verify email
+                if (message == "OK") {
+                    $(`#register`)[0].classList.add("hidden");
+                    $(`#verify_email`)[0].classList.remove("hidden");
+                }
+                
+                // Go straight to setting up TOTP
+                if (message == "OK; Email verification disabled") {
+                    $(`#register`)[0].classList.add("hidden");
+                    $(`#setup_totp`)[0].classList.remove("hidden");
+                }
 
             } else {
                 $(`#red_message`)[0].classList.remove("hidden");

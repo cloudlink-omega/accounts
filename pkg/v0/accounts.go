@@ -10,6 +10,7 @@ import (
 	"github.com/cloudlink-omega/accounts/pkg/constants"
 	"github.com/cloudlink-omega/accounts/pkg/email"
 	"github.com/cloudlink-omega/accounts/pkg/types"
+	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 
 	scrypt "github.com/elithrar/simple-scrypt"
@@ -99,8 +100,21 @@ func (v *APIv0) LoginEndpoint(c *fiber.Ctx) error {
 		}
 
 		// Verify the TOTP
-		if !totp.Validate(creds.TOTP, secret) {
-			c.Status(fiber.StatusUnauthorized)
+		success, err := totp.ValidateCustom(
+			creds.TOTP,
+			secret,
+			time.Now().UTC(),
+			totp.ValidateOpts{
+				Digits:    otp.DigitsSix,
+				Period:    30,
+				Skew:      1,
+				Algorithm: otp.AlgorithmSHA512,
+			})
+		if err != nil {
+			panic(err)
+		}
+		if !success {
+			c.SendStatus(fiber.StatusUnauthorized)
 			return c.SendString("invalid code")
 		}
 	}
@@ -166,30 +180,43 @@ func (v *APIv0) RegisterEndpoint(c *fiber.Ctx) error {
 	// Create a new JWT for this user. Session expires in 24 hours.
 	v.SetCookie(user, time.Now().Add(24*time.Hour), c)
 
-	// Generate a random 6-digit verification code
-	code := fmt.Sprintf("%06d", rand.Intn(1000000))
+	// If email is enabled, send a verification email. Otherwise, automatically assign the user as verified.
+	if v.MailConfig.Enabled {
 
-	// Store the verification code in the database
-	if err := v.DB.AddVerificationCode(user.ID, code); err != nil {
+		// Generate a random 6-digit verification code
+		code := fmt.Sprintf("%06d", rand.Intn(1000000))
+
+		// Store the verification code in the database
+		if err := v.DB.AddVerificationCode(user.ID, code); err != nil {
+			panic(err)
+		}
+
+		// Send the verification code to the user's email
+		email.SendPlainEmail(v.MailConfig, &types.EmailArgs{
+			Subject:  "Verify your account",
+			To:       user.Email,
+			Nickname: v.ServerNickname,
+		}, fmt.Sprintf(`Hello %s, You are receiving this email because you recently created a CloudLink Omega account on server %s.
+
+			To verify your account, please enter the following code on the verification page: %s.
+
+			If you did not create this account, you can safely ignore this email.
+
+			Regards,
+			- %s.`, user.Username, v.ServerNickname, code, v.ServerNickname))
+
+		// Return "OK"
+		return c.SendString("OK")
+	}
+
+	// Set the user's state to "verified" and "active"
+	user.State.Set(constants.USER_IS_EMAIL_REGISTERED)
+	user.State.Set(constants.USER_IS_ACTIVE)
+	if err := v.DB.UpdateUserState(user.ID, user.State); err != nil {
 		panic(err)
 	}
 
-	// Send the verification code to the user's email
-	email.SendPlainEmail(v.MailConfig, &types.EmailArgs{
-		Subject:  "Verify your account",
-		To:       user.Email,
-		Nickname: v.ServerNickname,
-	}, fmt.Sprintf(`Hello %s, You are receiving this email because you recently created a CloudLink Omega account on server %s.
-
-		To verify your account, please enter the following code on the verification page: %s.
-
-		If you did not create this account, you can safely ignore this email.
-
-		Regards,
-		 - %s.`, user.Username, v.ServerNickname, code, v.ServerNickname))
-
-	// Return "OK"
-	return c.SendString("OK")
+	return c.SendString("OK; Email verification disabled")
 }
 
 func (v *APIv0) LogoutEndpoint(c *fiber.Ctx) error {

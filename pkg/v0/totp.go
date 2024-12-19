@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"image/png"
+	"time"
 
 	"github.com/cloudlink-omega/accounts/pkg/constants"
 	"github.com/gofiber/fiber/v2"
@@ -82,7 +83,20 @@ func (v *APIv0) VerifyTotpEndpoint(c *fiber.Ctx) error {
 	}
 
 	// Verify the TOTP
-	if !totp.Validate(c.Query("code"), secret) {
+	success, err := totp.ValidateCustom(
+		c.Query("code"),
+		secret,
+		time.Now().UTC(),
+		totp.ValidateOpts{
+			Digits:    otp.DigitsSix,
+			Period:    30,
+			Skew:      1,
+			Algorithm: otp.AlgorithmSHA512,
+		})
+	if err != nil {
+		panic(err)
+	}
+	if !success {
 		c.SendStatus(fiber.StatusBadRequest)
 		return c.SendString("invalid code")
 	}
