@@ -121,7 +121,7 @@ func (v *APIv0) VerifyTotpEndpoint(c *fiber.Ctx) error {
 	}
 
 	// Hash the recovery codes with scrypt
-	hashed_codes := make([]string, len(recovery_codes))
+	var hashed_codes []string
 	for _, i := range recovery_codes {
 		hash, err := scrypt.GenerateFromPassword([]byte(i), scrypt.DefaultParams)
 		if err != nil {
