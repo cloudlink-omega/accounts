@@ -12,6 +12,7 @@ import (
 )
 
 type MailConfig struct {
+	Enabled  bool
 	Port     int
 	Server   string
 	Username string
