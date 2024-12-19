@@ -86,9 +86,9 @@ func (v *APIv0) LoginEndpoint(c *fiber.Ctx) error {
 	// Create a new JWT for this user. Session expires in 24 hours.
 	expiration := time.Now().Add(24 * time.Hour)
 	token := v.Auth.Create(&types.Claims{
-		Email:            c.FormValue("email"),
-		Username:         c.FormValue("email"),
-		ULID:             ulid.Make().String(),
+		Email:            user.Email,
+		Username:         user.Username,
+		ULID:             user.ID,
 		IdentityProvider: "local",
 	}, expiration)
 
