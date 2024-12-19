@@ -3,13 +3,19 @@ package v0
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"image/png"
+	"math/rand"
 	"time"
 
 	"github.com/cloudlink-omega/accounts/pkg/constants"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
+
+	scrypt "github.com/elithrar/simple-scrypt"
+
+	"github.com/goccy/go-json"
 )
 
 func (v *APIv0) EnrollTotpEndpoint(c *fiber.Ctx) error {
@@ -33,10 +39,8 @@ func (v *APIv0) EnrollTotpEndpoint(c *fiber.Ctx) error {
 		panic(err)
 	}
 
-	// Store key data in the database
-	if err := v.DB.StoreTotpSecret(claims.ULID, key.Secret()); err != nil {
-		panic(err)
-	}
+	// Store the secret
+	v.DB.StoreTotpSecret(claims.ULID, key.Secret())
 
 	// Generate the QR code
 	var buf bytes.Buffer
@@ -76,11 +80,8 @@ func (v *APIv0) VerifyTotpEndpoint(c *fiber.Ctx) error {
 		return c.SendString("code too long")
 	}
 
-	// Get secret
-	secret, err := v.DB.GetTotpSecret(claims.ULID)
-	if err != nil {
-		panic(err)
-	}
+	// Read the secret from the database
+	secret := v.DB.GetTotpSecret(claims.ULID)
 
 	// Verify the TOTP
 	success, err := totp.ValidateCustom(
@@ -101,16 +102,47 @@ func (v *APIv0) VerifyTotpEndpoint(c *fiber.Ctx) error {
 		return c.SendString("invalid code")
 	}
 
-	// Set the user flags necessary to enable TOTP
+	// Read the user's state
 	user := v.DB.GetUser(claims.ULID)
 	if user == nil {
-		panic("user not found")
+		panic("no user found")
 	}
+
+	// Set the user flags necessary to enable TOTP
 	user.State.Set(constants.USER_IS_TOTP_ENABLED)
 	if err := v.DB.UpdateUserState(claims.ULID, user.State); err != nil {
 		panic(err)
 	}
 
-	// Return success
-	return c.SendString("OK")
+	// Generate ten randomly generated 10-digit codes used for recovery. TODO: make this generate random words instead
+	var recovery_codes []string
+	for i := 0; i < 10; i++ {
+		recovery_codes = append(recovery_codes, fmt.Sprintf("%10d", rand.Intn(10000000000)))
+	}
+
+	// Hash the recovery codes with scrypt
+	hashed_codes := make([]string, len(recovery_codes))
+	for _, i := range recovery_codes {
+		hash, err := scrypt.GenerateFromPassword([]byte(i), scrypt.DefaultParams)
+		if err != nil {
+			panic(err)
+		}
+		hashed_codes = append(hashed_codes, string(hash))
+	}
+
+	// Store the hashed recovery codes in the database
+	if err := v.DB.StoreRecoveryCodes(claims.ULID, hashed_codes); err != nil {
+		panic(err)
+	}
+
+	// Return the recovery codes
+	output, err := json.Marshal(struct {
+		RecoveryCodes []string `json:"recovery_codes"`
+	}{
+		RecoveryCodes: recovery_codes,
+	})
+	if err != nil {
+		panic(err)
+	}
+	return c.SendString(string(output))
 }

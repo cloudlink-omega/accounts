@@ -94,10 +94,7 @@ func (v *APIv0) LoginEndpoint(c *fiber.Ctx) error {
 		}
 
 		// Get secret
-		secret, err := v.DB.GetTotpSecret(user.ID)
-		if err != nil {
-			panic(err)
-		}
+		secret := v.DB.GetTotpSecret(user.ID)
 
 		// Verify the TOTP
 		success, err := totp.ValidateCustom(

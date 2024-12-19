@@ -100,4 +100,16 @@ func (d *Database) run_migrations() {
 		Define(
 			"FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE",
 		))
+	d.run_build(sqlbuilder.NewCreateTableBuilder().
+		CreateTable("recovery_codes").
+		IfNotExists().
+		Define(
+			"user_id", "CHAR(26) NOT NULL",
+		).
+		Define(
+			"code", "VARCHAR(50) NOT NULL", // no clue the maximum length of the code at this time
+		).
+		Define(
+			"FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE",
+		))
 }
