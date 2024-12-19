@@ -3,10 +3,13 @@ package oauth
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"time"
 
+	"github.com/cloudlink-omega/accounts/pkg/bitfield"
+	"github.com/cloudlink-omega/accounts/pkg/constants"
 	"github.com/cloudlink-omega/accounts/pkg/sanitizer"
 	"github.com/cloudlink-omega/accounts/pkg/types"
 	"github.com/gofiber/fiber/v2"
@@ -94,24 +97,47 @@ func (s *OAuth) callback_oauth_flow(c *fiber.Ctx) error {
 	}
 
 	// Consult with the database
-	user, err := s.DB.GetUserFromProvider(api_user["id"].(string), identity_provider)
-	if err != nil {
+	var user_id string
+	switch api_user["id"].(type) {
+	case string:
+		user_id = api_user["id"].(string)
+	default:
+		user_id = fmt.Sprintf("%v", api_user["id"])
+	}
 
+	log.Print(user_id)
+
+	user, err := s.DB.GetUserFromProvider(user_id, identity_provider)
+	if err != nil {
+		panic(err)
+	}
+
+	if user == nil {
+		log.Print("Creating user")
 		userid := ulid.Make()
+		var state bitfield.Bitfield8
+		state.Set(constants.USER_IS_EMAIL_REGISTERED)
+		state.Set(constants.USER_IS_ACTIVE)
+		state.Set(constants.USER_IS_OAUTH_ONLY)
 		user = &types.User{
 			ID:       userid.String(),
 			Username: api_user[provider.UsernameKey].(string),
 			Email:    api_user[provider.EmailKey].(string),
-			State:    0,
+			State:    state,
 		}
 
 		if err := s.DB.CreateUser(user); err != nil {
 			panic(fmt.Errorf("failed to create user: %w", err))
 		}
 
-		if err := s.DB.LinkUserToProvider(api_user["id"].(string), userid.String(), identity_provider); err != nil {
+		if err := s.DB.LinkUserToProvider(user_id, userid.String(), identity_provider); err != nil {
 			panic(fmt.Errorf("failed to link user: %w", err))
 		}
+
+		log.Print("User created")
+
+	} else {
+		log.Print("Found user")
 	}
 
 	// Create a new JWT for this user. Session expires in 24 hours.
@@ -119,7 +145,7 @@ func (s *OAuth) callback_oauth_flow(c *fiber.Ctx) error {
 	token := s.Auth.Create(&types.Claims{
 		Email:            user.Email,
 		Username:         user.Username,
-		ULID:             ulid.MustParse(user.ID),
+		ULID:             user.ID,
 		IdentityProvider: identity_provider,
 	}, expiration)
 

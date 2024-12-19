@@ -8,6 +8,7 @@ import (
 	database "github.com/cloudlink-omega/accounts/pkg/database"
 	oauth "github.com/cloudlink-omega/accounts/pkg/oauth"
 	pages "github.com/cloudlink-omega/accounts/pkg/pages"
+	"github.com/cloudlink-omega/accounts/pkg/types"
 	v0 "github.com/cloudlink-omega/accounts/pkg/v0"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
@@ -71,6 +72,9 @@ func New(
 
 	db_flavor sqlbuilder.Flavor,
 
+	// Email configuration
+	email_config *types.MailConfig,
+
 ) *Accounts {
 
 	// Truncate ending / in router_path if it exists
@@ -88,7 +92,7 @@ func New(
 	srv := &Accounts{
 		Page:  pages.New(router_path, server_url, api_url, server_name, primary_website, session_key, accounts_db),
 		OAuth: oauth.New(router_path, server_url, enforce_https, api_domain, session_key, accounts_db),
-		APIv0: v0.New(router_path, enforce_https, api_domain, server_url, session_key, accounts_db),
+		APIv0: v0.New(router_path, enforce_https, api_domain, server_url, session_key, accounts_db, email_config, server_name),
 	}
 
 	// Initialize template engine

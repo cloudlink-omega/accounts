@@ -82,10 +82,20 @@ func (d *Database) run_migrations() {
 			"user_id", "CHAR(26) UNIQUE NOT NULL",
 		).
 		Define(
-			"key", "VARCHAR(255) NOT NULL",
+			"secret", "VARCHAR(255) NOT NULL",
 		).
 		Define(
-			"secret", "VARCHAR(255) NOT NULL",
+			"FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE",
+		))
+
+	d.run_build(sqlbuilder.NewCreateTableBuilder().
+		CreateTable("verification_codes").
+		IfNotExists().
+		Define(
+			"user_id", "CHAR(26) UNIQUE NOT NULL",
+		).
+		Define(
+			"code", "CHAR(6) NOT NULL",
 		).
 		Define(
 			"FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE",

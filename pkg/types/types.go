@@ -4,12 +4,25 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/cloudlink-omega/accounts/pkg/bitfield"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/huandu/go-sqlbuilder"
-	"github.com/oklog/ulid/v2"
 	"golang.org/x/oauth2"
 )
+
+type MailConfig struct {
+	Port     int
+	Server   string
+	Username string
+	Password string
+}
+
+type EmailArgs struct {
+	Subject  string // Subject of email
+	To       string // Email address of recipient (to user)
+	Nickname string // Nickname of sender (i.e. this server)
+}
 
 type Pages struct {
 	RouterPath     string
@@ -37,10 +50,10 @@ type APIv0 struct {
 
 // Claims are custom claims extending default ones
 type Claims struct {
-	Email            string    `json:"email,omitempty"`
-	Username         string    `json:"username,omitempty"`
-	ULID             ulid.ULID `json:"ulid,omitempty"`
-	IdentityProvider string    `json:"identity_provider,omitempty"`
+	Email            string `json:"email,omitempty"`
+	Username         string `json:"username,omitempty"`
+	ULID             string `json:"ulid,omitempty"`
+	IdentityProvider string `json:"identity_provider,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -66,7 +79,7 @@ type User struct {
 	Username string
 	Password string // scrypt
 	Email    string
-	State    uint8 // bitfield
+	State    bitfield.Bitfield8 // bitfield
 }
 
 func (u *User) String() string {

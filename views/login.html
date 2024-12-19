@@ -17,37 +17,31 @@
         <h1 class="text-5xl font-bold mt-2 mb-2 dark:text-white">Login</h1>
         <span id="red_message" class="hidden inline-flex items-center mt-4 gap-1 px-2 py-1 rounded-full text-2xl font-medium bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300"></span>
         <span id="info_message" class="hidden inline-flex items-center mt-4 gap-1 px-2 py-1 rounded-full text-2xl font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"></span>
+        
     </div>
     <div>
-        <form id="login">
-            <div class="flex flex-col justify-center items-center">
-
-                <div id="credentials" class="flex flex-col justify-center items-center">
+        <div class="flex flex-col justify-center items-center">
+            <form id="login">
+                <div id="login_prompt" class="flex flex-col justify-center items-center">
                     <h2 class="text-2xl text-black dark:text-white">Enter your email address:</h2>
-
                     <input type="email" id="email" name="email"
                         class="text-2xl block text-center px-4 py-2 mt-4 mb-4 bg-white dark:bg-gray-900 text-black dark:text-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
                         placeholder="Enter your email" required />
-                    
                     <h2 class="text-2xl text-black dark:text-white">Enter your password:</h2>
-
                     <input type="password" id="password" name="password"
-                        class="text-2xl block text-center px-4 py-2 mt-4 mb-8 bg-white dark:bg-gray-900 text-black dark:text-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
+                        class="text-2xl block text-center px-4 py-2 mt-4 mb-4 bg-white dark:bg-gray-900 text-black dark:text-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
                         placeholder="Enter your password" required />
+                    <div class="flex flex-col justify-center items-center mb-4">
+                        <h2 class="text-black dark:text-white">If you have enabled TOTP on your account and we don't ask for it, your browser might be auto-filling it.</h2>
+                    </div>
                 </div>
-                
-
-                <div id="totp" class="hidden flex flex-col justify-center items-center">
-
+                <div id="totp_prompt" class="hidden flex flex-col justify-center items-center">
                     <h2 class="text-2xl text-black dark:text-white">Please enter your TOTP code.</h2>
-
                     <input type="number" id="totp" name="totp"
                         class="text-2xl block text-center px-4 py-2 mt-4 mb-8 bg-white dark:bg-gray-900 text-black dark:text-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         placeholder="TOTP code" required />
                 </div>
-                
-
-            </div>
+            </form>
             <div id="buttons" class="w-full flex flex-wrap flex-row items-center justify-center gap-3">
                 <button id="submit" class="w-50 px-6 py-3 bg-white dark:bg-gray-600 hover:font-bold hover:bg-red-400 dark:hover:bg-red-400 text-black dark:text-white hover:text-white rounded-xl 
                     font-medium transition-all duration-300 
@@ -88,7 +82,7 @@
                     </span>
                 </a>
             </div>
-        </form>
+        </div>
     </div>
 </div>
 
@@ -121,6 +115,15 @@
             return;
         }
 
+        // If the TOTP field is shown, require it and check if it's lesser or greater than 6 digits
+        if ($(`#totp_prompt`)[0].classList.contains("hidden") == false) {
+            if ($(`#totp`)[0].value.length != 6) {
+                $(`#red_message`)[0].classList.remove("hidden");
+                $(`#red_message`)[0].textContent = "Please enter a valid TOTP code.";
+                return;
+            }
+        }
+
         // Show the loading overlay
         $(`#loadingOverlay`)[0].classList.remove("hidden");
 
@@ -147,8 +150,8 @@
 
                 case "totp required":
                     $(`#loadingOverlay`)[0].classList.add("hidden");
-                    $(`#credentials`)[0].classList.add("hidden");
-                    $(`#totp`)[0].classList.remove("hidden");
+                    $(`#login_prompt`)[0].classList.add("hidden");
+                    $(`#totp_prompt`)[0].classList.remove("hidden");
                     break;
                 
                 default:

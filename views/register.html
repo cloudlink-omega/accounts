@@ -190,10 +190,63 @@
                 </a>
             </div>
         </form>
+
+        <form id="totp_enroll" class="hidden">
+            <div class="flex flex-col justify-center items-center text-center">
+                <h2 class="text-3xl text-black dark:text-white mb-4">Set up TOTP</h2>
+                <p class="text-black dark:text-white mb-4">Scan this QR code with your authentication app, or enter the key manually. Then, enter the verification code below.</p>
+                <img id="totp_qr">
+                <h3 id="totp_secret" class="text-black dark:text-white mt-4"></h3>
+                <input type="number" id="totpcode" name="totpcode"
+                    class="text-2xl block text-center px-4 py-2 mt-4 mb-4 bg-white dark:bg-gray-900 text-black dark:text-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    placeholder="Verification code" required />
+                <button id="verifytotp" class="w-50 px-6 py-3 bg-white dark:bg-gray-600 hover:font-bold hover:bg-red-400 dark:hover:bg-red-400 text-black dark:text-white hover:text-white rounded-xl 
+                    font-medium transition-all duration-300 
+                    hover:shadow-lg hover:shadow-red-500/30 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 
+                    active:scale-95">
+                    <span class="flex items-center justify-center gap-2 text-2xl">
+                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M14 20V44" stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                            <path
+                                d="M30 11.76L28 20H39.66C40.281 20 40.8934 20.1446 41.4489 20.4223C42.0043 20.7 42.4874 21.1032 42.86 21.6C43.2326 22.0968 43.4844 22.6735 43.5955 23.2845C43.7066 23.8954 43.6739 24.5239 43.5 25.12L38.84 41.12C38.5977 41.9509 38.0924 42.6807 37.4 43.2C36.7076 43.7193 35.8655 44 35 44H8C6.93913 44 5.92172 43.5786 5.17157 42.8284C4.42143 42.0783 4 41.0609 4 40V24C4 22.9391 4.42143 21.9217 5.17157 21.1716C5.92172 20.4214 6.93913 20 8 20H13.52C14.2642 19.9996 14.9935 19.7916 15.6259 19.3994C16.2583 19.0073 16.7688 18.4464 17.1 17.78L24 4C24.9432 4.01168 25.8715 4.23634 26.7156 4.65719C27.5597 5.07805 28.2979 5.68421 28.8748 6.43041C29.4518 7.1766 29.8526 8.04352 30.0475 8.9664C30.2423 9.88929 30.2261 10.8443 30 11.76Z"
+                                stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        Verify
+                    </span>
+                </button>
+            </div>
+        </form>
+
+        <form id="totp_complete" class="hidden">
+            <div class="flex flex-col justify-center items-center text-center">
+                <h2 class="text-3xl text-black dark:text-white mb-4">Setup complete!</h2>
+                <p class="text-black dark:text-white">You have successfully set up TOTP. Now it's time to start playing!</p>
+            </div>
+            <div class="w-full mt-4 flex flex-wrap flex-row items-center justify-center gap-3">
+                <a href="{{ .BaseURL }}/?redirect={{ .Redirect }}" class="w-50 px-6 py-3 bg-white dark:bg-gray-600 hover:font-bold hover:bg-red-400 dark:hover:bg-red-400 text-black dark:text-white hover:text-white rounded-xl 
+                    font-medium transition-all duration-300 
+                    hover:shadow-lg hover:shadow-red-500/30 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 
+                    active:scale-95">
+                    <span class="flex items-center justify-center gap-2 text-2xl">
+                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M14 20V44" stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                            <path
+                                d="M30 11.76L28 20H39.66C40.281 20 40.8934 20.1446 41.4489 20.4223C42.0043 20.7 42.4874 21.1032 42.86 21.6C43.2326 22.0968 43.4844 22.6735 43.5955 23.2845C43.7066 23.8954 43.6739 24.5239 43.5 25.12L38.84 41.12C38.5977 41.9509 38.0924 42.6807 37.4 43.2C36.7076 43.7193 35.8655 44 35 44H8C6.93913 44 5.92172 43.5786 5.17157 42.8284C4.42143 42.0783 4 41.0609 4 40V24C4 22.9391 4.42143 21.9217 5.17157 21.1716C5.92172 20.4214 6.93913 20 8 20H13.52C14.2642 19.9996 14.9935 19.7916 15.6259 19.3994C16.2583 19.0073 16.7688 18.4464 17.1 17.78L24 4C24.9432 4.01168 25.8715 4.23634 26.7156 4.65719C27.5597 5.07805 28.2979 5.68421 28.8748 6.43041C29.4518 7.1766 29.8526 8.04352 30.0475 8.9664C30.2423 9.88929 30.2261 10.8443 30 11.76Z"
+                                stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        Let's go!
+                    </span>
+                </a>
+            </div>
+        </form>
     </div>
 </div>
 
 <script type="text/javascript" onload>
+
+    // Step 1: Check if the username is available
     document.getElementById("check").addEventListener("click", async function (event) {
         event.preventDefault(); // Prevent the default behavior
 
@@ -220,34 +273,46 @@
         $(`#loadingOverlay`)[0].classList.remove("hidden");
 
         // Check if the playername is taken
-        response = await fetch("{{ .BaseURL }}/api/v0/check?" + new URLSearchParams({ playername: $(`#username`)[0].value }));
+        response = await fetch("{{ .BaseURL }}/api/v0/check?" + new URLSearchParams({ username: $(`#username`)[0].value }));
         message = await response.text();
 
         // TODO: something with the results
 
         // Artificial 1 second delay - It's called UX design, calm down
         setTimeout(() => {
+            if (response.ok) {
+                // Hide the loading overlay
+                $(`#loadingOverlay`)[0].classList.add("hidden");
 
-            // Hide the loading overlay
-            $(`#loadingOverlay`)[0].classList.add("hidden");
+                // Show the message
+                // $(`#red_message`)[0].classList.remove("hidden");
+                // $(`#red_message`)[0].textContent = "That name's been taken. Try something else.";
 
-            // Show the message
-            // $(`#red_message`)[0].classList.remove("hidden");
-            // $(`#red_message`)[0].textContent = "That name's been taken. Try something else.";
+                $(`#red_message`)[0].classList.add("hidden");
+                $(`#info_message`)[0].classList.remove("hidden");
+                $(`#info_message`)[0].textContent = "Nice to meet you, " + $(`#username`)[0].value + "!";
 
-            $(`#info_message`)[0].classList.remove("hidden");
-            $(`#info_message`)[0].textContent = "Nice to meet you, " + $(`#username`)[0].value + "!";
+                // Hide the first part of setup, show the second
+                $(`#pick_username`)[0].classList.add("hidden");
+                $(`#check`)[0].classList.add("hidden");
+                $(`#setup_credentials`)[0].classList.remove("hidden");
+                $(`#confirm`)[0].classList.remove("hidden");
 
-            // Hide the first part of setup, show the second
-            $(`#pick_username`)[0].classList.add("hidden");
-            $(`#check`)[0].classList.add("hidden");
-            $(`#setup_credentials`)[0].classList.remove("hidden");
-            $(`#confirm`)[0].classList.remove("hidden");
-
+            } else if (response.status == 409) {
+                $(`#loadingOverlay`)[0].classList.add("hidden");
+                $(`#red_message`)[0].classList.remove("hidden");
+                $(`#red_message`)[0].textContent = "That name's been taken. Try something else.";
+            
+            } else {
+                $(`#loadingOverlay`)[0].classList.add("hidden");
+                $(`#red_message`)[0].classList.remove("hidden");
+                $(`#red_message`)[0].textContent = message;
+            }
         }, 1000);
 
     });
 
+    // Step 2: Register account
     document.getElementById("confirm").addEventListener("click", async function (event) {
         event.preventDefault(); // Prevent the default behavior
 
@@ -309,12 +374,11 @@
         // Show the loading overlay
         $(`#loadingOverlay`)[0].classList.remove("hidden");
 
-        // Submit for processing
         response = await fetch(
-                "{{ .BaseURL }}/api/v0/register", {
-                method: "POST",
-                body: new FormData($(`#register`)[0]),
-            });
+            "{{ .BaseURL }}/api/v0/register", {
+            method: "POST",
+            body: new FormData($(`#register`)[0]),
+        });
 
         console.log(response.statusText);
         message = await response.text();
@@ -324,30 +388,21 @@
 
             // Hide the loading overlay
             $(`#loadingOverlay`)[0].classList.add("hidden");
-
-            if (!response.ok) {
-                $(`#red_message`)[0].classList.remove("hidden");
-                $(`#red_message`)[0].textContent = message;
-            }
-
-            if (message == "OK") {
+            if (response.ok || message == "OK") {
                 $(`#green_message`)[0].classList.remove("hidden");
                 $(`#green_message`)[0].textContent = "Account registered and logged in successfully!";
                 $(`#register`)[0].classList.add("hidden");
                 $(`#verify_email`)[0].classList.remove("hidden");
 
             } else {
-                $(`#info_message`)[0].classList.remove("hidden");
-                $(`#info_message`)[0].textContent = message;
+                $(`#red_message`)[0].classList.remove("hidden");
+                $(`#red_message`)[0].textContent = message;
             }
 
         }, 1000);
     });
 
-    document.getElementById("continue").addEventListener("click", async function (event) {
-        event.preventDefault(); // Prevent the default behavior
-    });
-
+    // Step 3: Verify email
     document.getElementById("verify").addEventListener("click", async function (event) {
         event.preventDefault(); // Prevent the default behavior
 
@@ -363,8 +418,19 @@
             return;
         }
 
+        // Require verification code to be 6 digits
+        if ($(`#emailcode`)[0].value.length !== 6) {
+            $(`#red_message`)[0].classList.remove("hidden");
+            $(`#red_message`)[0].textContent = "Please enter a 6-digit verification code.";
+            return;
+        }
+
         // Show the loading overlay
         $(`#loadingOverlay`)[0].classList.remove("hidden");
+
+        // Submit for processing
+        response = await fetch("{{ .BaseURL }}/api/v0/verify?" + new URLSearchParams({ code: $(`#emailcode`)[0].value }));
+        message = await response.text();
 
         // Artificial 1 second delay - It's called UX design, calm down
         setTimeout(async () => {
@@ -372,9 +438,84 @@
             // Hide the loading overlay
             $(`#loadingOverlay`)[0].classList.add("hidden");
 
-            $(`#red_message`)[0].classList.remove("hidden");
-            $(`#red_message`)[0].textContent = "Work in progress.";
+            if (response.ok || message == "OK") {
+                $(`#green_message`)[0].classList.remove("hidden");
+                $(`#green_message`)[0].textContent = "Account verified!";
+                $("#verify_email")[0].classList.add("hidden");
+                $("#setup_totp")[0].classList.remove("hidden");
 
+            } else {
+                $(`#red_message`)[0].classList.remove("hidden");
+                $(`#red_message`)[0].textContent = message;
+            }
         }, 1000);
     });
+    
+    // Step 4: Setup TOTP
+    document.getElementById("continue").addEventListener("click", async function (event) {
+        event.preventDefault(); // Prevent the default behavior
+
+        // Hide messages
+        $(`#green_message`)[0].classList.add("hidden");
+        $(`#info_message`)[0].classList.add("hidden");
+        $(`#red_message`)[0].classList.add("hidden");
+
+        // Show the loading overlay
+        $(`#loadingOverlay`)[0].classList.remove("hidden");
+
+        // Hide the first part of setup
+        $("#setup_totp")[0].classList.add("hidden");
+
+        // Request a new verification code and secret
+        response = await fetch("{{ .BaseURL }}/api/v0/begin-totp-enrollment");
+        message = await response.text();
+
+        // Artificial 1 second delay - It's called UX design, calm down
+        setTimeout(async () => {
+
+            // Hide the loading overlay
+            $(`#loadingOverlay`)[0].classList.add("hidden");
+
+            if (response.ok) {
+                message = JSON.parse(message);
+                $("#totp_qr")[0].src = message.qr;
+                $("#totp_secret")[0].textContent = message.key;
+                $("#totp_enroll")[0].classList.remove("hidden");
+            }
+        }, 1000);
+    });
+
+    // Step 5: Verify TOTP
+    document.getElementById("verifytotp").addEventListener("click", async function (event) {
+        event.preventDefault(); // Prevent the default behavior
+
+        // Hide messages
+        $(`#green_message`)[0].classList.add("hidden");
+        $(`#info_message`)[0].classList.add("hidden");
+        $(`#red_message`)[0].classList.add("hidden");
+
+        // Show the loading overlay
+        $(`#loadingOverlay`)[0].classList.remove("hidden");
+
+        // Submit the code
+        // Submit for processing
+        response = await fetch("{{ .BaseURL }}/api/v0/verify-totp-enrollment?" + new URLSearchParams({ code: $(`#totpcode`)[0].value }));
+        message = await response.text();
+
+        // Artificial 1 second delay - It's called UX design, calm down
+        setTimeout(async () => {
+
+            // Hide the loading overlay
+            $(`#loadingOverlay`)[0].classList.add("hidden");
+
+            if (response.ok || message == "OK") {
+                $("#totp_enroll")[0].classList.add("hidden");
+                $("#totp_complete")[0].classList.remove("hidden");
+            } else {
+                $(`#red_message`)[0].classList.remove("hidden");
+                $(`#red_message`)[0].textContent = message;
+            }
+        }, 1000);
+    });
+
 </script>

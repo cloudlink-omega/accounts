@@ -43,3 +43,17 @@ func (d *Database) run_insert(builder *sqlbuilder.InsertBuilder) (sql.Result, er
 	log.Printf(sql, args...)
 	return d.DB.Exec(sql, args...)
 }
+
+func (d *Database) run_delete(builder *sqlbuilder.DeleteBuilder) (sql.Result, error) {
+	builder.BuildWithFlavor(d.Flavor)
+	sql, args := builder.Build()
+	log.Printf(sql, args...)
+	return d.DB.Exec(sql, args...)
+}
+
+func (d *Database) run_update(builder *sqlbuilder.UpdateBuilder) (sql.Result, error) {
+	builder.BuildWithFlavor(d.Flavor)
+	sql, args := builder.Build()
+	log.Printf(sql, args...)
+	return d.DB.Exec(sql, args...)
+}
