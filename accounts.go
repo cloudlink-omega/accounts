@@ -110,7 +110,7 @@ func New(
 	srv.App.Use("/assets", filesystem.New(filesystem.Config{
 		Root:       http.FS(embedded_assets),
 		PathPrefix: "assets",
-		Browse:     true,
+		Browse:     false,
 	}))
 
 	// Return created instance
