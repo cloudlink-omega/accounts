@@ -3,7 +3,7 @@
 Provides account registration & authentication endpoints for CL5.
 
 # Requirements
-* Go 1.23 or newer
+* Go 1.23.2 or newer
 * A SQL driver and database.
 
 # Usage
@@ -12,11 +12,23 @@ The accounts server is a standard Fiber v2 app, and can be natively mounted.
 package main
 
 import (
+    "database/sql"
     "github.com/gofiber/fiber/v2"
     "github.com/cloudlink-omega/accounts"
+    "github.com/huandu/go-sqlbuilder"
+    _ "github.com/ncruces/go-sqlite3/driver"
+    _ "github.com/ncruces/go-sqlite3/embed"
 )
 
 func main() {
+
+    // Initialize your database (SQLite as an example)
+	db, err := sql.Open("sqlite3", "file:database.db")
+	if err != nil {
+		panic(err)
+	}
+
+    // . . .
 
     // Initialize a new Fiber app
     app := fiber.New()
@@ -33,7 +45,14 @@ func main() {
         "localhost:3000",        // primary_website: For use with pointing to any higher-level routers that may be mounted beyond the accounts server.
         "SESSION_KEY",           // session_key: Used for encrypting and decrypting JWT cookies. For example, use `openssl rand 60 | base64`.
         false,                   // enforce_https: Set to true if you are serving over HTTPS. This sets the "HTTPSOnly" value for cookies.
-        "./templates",           // template_path: Points to the location of the account server's webpage templates.
+        db,                      // db: Use a database/sql compatible driver and insert an instance here. In this example, I am using SQLite.
+		sqlbuilder.SQLite,       // db_flavor: See huandu/go-sqlbuilder flavors for your specific DB / driver.
+		&types.MailConfig{       // email_config: Required for sending emails.
+			Port:     587,
+			Server:   "smtp.gmail.com",
+			Username: "invalid@gmail.com",
+			Password: " . . . ",
+		},
     )
 
     // You can then configure OAuth providers. The currently supported ones are Google, Discord, and GitHub.
