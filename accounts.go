@@ -107,7 +107,6 @@ func New(
 	// Configure routes
 	srv.App.Route("/oauth", srv.OAuth.Routes)
 	srv.App.Route("/api/v0", srv.APIv0.Routes)
-	srv.App.Route("/", srv.Page.Routes)
 
 	// Configure static
 	srv.App.Use("/assets", filesystem.New(filesystem.Config{
@@ -115,6 +114,9 @@ func New(
 		PathPrefix: "assets",
 		Browse:     false,
 	}))
+
+	// Configure pages
+	srv.App.Route("/", srv.Page.Routes)
 
 	// Return created instance
 	return srv
