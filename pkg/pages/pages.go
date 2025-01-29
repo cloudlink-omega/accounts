@@ -14,6 +14,7 @@ type Pages struct {
 	ServerName     string
 	PrimaryWebsite string
 	Routes         func(fiber.Router)
+	ErrorHandler   func(c *fiber.Ctx, err error) error
 	Auth           *authorization.Auth
 	DB             *database.Database
 	Providers      map[string]*types.Provider
