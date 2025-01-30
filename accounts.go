@@ -102,7 +102,7 @@ func New(
 	engine := html.NewFileSystem(http.FS(embedded_templates), ".html")
 
 	// Initialize app
-	srv.App = fiber.New(fiber.Config{Views: engine})
+	srv.App = fiber.New(fiber.Config{Views: engine, ErrorHandler: srv.Page.ErrorPage})
 
 	// Configure routes
 	srv.App.Route("/oauth", srv.OAuth.Routes)
