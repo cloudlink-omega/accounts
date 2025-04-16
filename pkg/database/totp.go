@@ -6,34 +6,28 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 
-	"github.com/huandu/go-sqlbuilder"
+	"github.com/cloudlink-omega/accounts/pkg/types"
+	"gorm.io/gorm/clause"
 )
 
 func (d *Database) store_secret(user string, secret string) error {
-	builder := sqlbuilder.NewInsertBuilder().InsertInto("users_totp").Values(user, secret)
-	_, err := d.run_insert(builder)
-	if err != nil {
-		return err
+	totp := types.UserTOTP{
+		UserID: user,
+		Secret: secret,
 	}
-	return nil
+	// insert or update
+	return d.DB.Clauses(clause.OnConflict{
+		UpdateAll: true,
+	}).Create(&totp).Error
 }
 
 func (d *Database) get_secret(user string) (string, error) {
-	builder := sqlbuilder.NewSelectBuilder().Select("secret").From("users_totp")
-	builder.Where(builder.Equal("user_id", user))
-	res, err := d.run_select(builder)
+	var totp types.UserTOTP
+	err := d.DB.First(&totp, "user_id = ?", user).Error
 	if err != nil {
 		return "", err
 	}
-	defer res.Close()
-	if res.Next() {
-		var secret string
-		if err := res.Scan(&secret); err != nil {
-			return "", err
-		}
-		return secret, nil
-	}
-	return "", nil
+	return totp.Secret, nil
 }
 
 // Encrypts and stores the user's TOTP secret using AES-GCM encryption and the user's password hash.

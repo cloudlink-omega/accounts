@@ -1,7 +1,6 @@
 package accounts
 
 import (
-	"database/sql"
 	"embed"
 	"net/http"
 
@@ -13,7 +12,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/template/html/v2"
-	"github.com/huandu/go-sqlbuilder"
+	"gorm.io/gorm"
 )
 
 //go:embed assets/*
@@ -27,11 +26,6 @@ type Accounts struct {
 	Page  *pages.Pages
 	OAuth *oauth.OAuth
 	App   *fiber.App
-}
-
-type DatabaseConfig struct {
-	Driver           string
-	ConnectionString string
 }
 
 // New creates a new Accounts instance.
@@ -67,10 +61,8 @@ func New(
 	// Set to "true" to enforce cookies requiring HTTPS.
 	enforce_https bool,
 
-	// Database configuration
-	db *sql.DB,
-
-	db_flavor sqlbuilder.Flavor,
+	// Database configuration. Passed into GORM.
+	db *gorm.DB,
 
 	// Email configuration
 	email_config *types.MailConfig,
@@ -83,8 +75,8 @@ func New(
 	}
 
 	// Initialize database
-	accounts_db, err := database.Initialize(db, db_flavor)
-	if err != nil {
+	accounts_db := &database.Database{DB: db}
+	if err := accounts_db.RunMigrations(); err != nil {
 		panic(err)
 	}
 
