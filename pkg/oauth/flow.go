@@ -91,7 +91,7 @@ func (s *OAuth) callback_oauth_flow(c *fiber.Ctx) error {
 	}
 
 	defer resp.Body.Close()
-	var api_user map[string]interface{}
+	var api_user map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&api_user); err != nil {
 		panic(err)
 	}

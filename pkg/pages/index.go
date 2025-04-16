@@ -9,7 +9,7 @@ func (p *Pages) Index(c *fiber.Ctx) error {
 	c.Context().SetContentType("text/html; charset=utf-8")
 	if p.Auth.Valid(c) {
 		user := p.Auth.GetClaims(c)
-		return c.Render("views/hello", map[string]interface{}{
+		return c.Render("views/hello", map[string]any{
 			"BaseURL":        p.RouterPath,
 			"ServerName":     p.ServerName,
 			"PrimaryWebsite": p.PrimaryWebsite,
@@ -19,7 +19,7 @@ func (p *Pages) Index(c *fiber.Ctx) error {
 		}, "views/layout")
 
 	} else {
-		return c.Render("views/welcome", map[string]interface{}{
+		return c.Render("views/welcome", map[string]any{
 			"BaseURL":          p.RouterPath,
 			"ServerName":       p.ServerName,
 			"PrimaryWebsite":   p.PrimaryWebsite,

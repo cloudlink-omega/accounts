@@ -69,7 +69,7 @@ func (s *Auth) Valid(c *fiber.Ctx) bool {
 	return err == nil && tkn.Valid
 }
 
-func (s *Auth) Create(claims interface{}, expiration time.Time) string {
+func (s *Auth) Create(claims any, expiration time.Time) string {
 
 	var token *jwt.Token
 	switch c := claims.(type) {

@@ -6,7 +6,7 @@ import (
 )
 
 func (p *Pages) Login(c *fiber.Ctx) error {
-	data := map[string]interface{}{
+	data := map[string]any{
 		"BaseURL":        p.RouterPath,
 		"ServerName":     p.ServerName,
 		"PrimaryWebsite": p.PrimaryWebsite,
