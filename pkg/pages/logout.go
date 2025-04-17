@@ -6,13 +6,16 @@ import (
 )
 
 func (p *Pages) Logout(c *fiber.Ctx) error {
-	data := map[string]any{
-		"BaseURL":        p.RouterPath,
-		"ServerName":     p.ServerName,
-		"PrimaryWebsite": p.PrimaryWebsite,
-		"Redirect":       sanitizer.Sanitized(c, c.Query("redirect")),
-		"Profile":        "/assets/static/img/placeholder.png",
+	if p.Auth.Valid(c) {
+		data := map[string]any{
+			"BaseURL":        p.RouterPath,
+			"ServerName":     p.ServerName,
+			"PrimaryWebsite": p.PrimaryWebsite,
+			"Redirect":       sanitizer.Sanitized(c, c.Query("redirect")),
+			"Profile":        "/assets/static/img/placeholder.png",
+		}
+		c.Context().SetContentType("text/html; charset=utf-8")
+		return c.Render("views/logout", data, "views/layout")
 	}
-	c.Context().SetContentType("text/html; charset=utf-8")
-	return c.Render("views/logout", data, "views/layout")
+	return c.Redirect(p.RouterPath)
 }

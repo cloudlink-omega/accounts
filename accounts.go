@@ -8,7 +8,7 @@ import (
 	oauth "github.com/cloudlink-omega/accounts/pkg/oauth"
 	pages "github.com/cloudlink-omega/accounts/pkg/pages"
 	"github.com/cloudlink-omega/accounts/pkg/structs"
-	v0 "github.com/cloudlink-omega/accounts/pkg/v0"
+	v1 "github.com/cloudlink-omega/accounts/pkg/v1"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/template/html/v2"
@@ -22,7 +22,7 @@ var embedded_assets embed.FS
 var embedded_templates embed.FS
 
 type Accounts struct {
-	APIv0 *v0.APIv0
+	APIv1 *v1.API
 	Page  *pages.Pages
 	OAuth *oauth.OAuth
 	App   *fiber.App
@@ -84,7 +84,7 @@ func New(
 	srv := &Accounts{
 		Page:  pages.New(router_path, server_url, api_url, server_name, primary_website, session_key, accounts_db),
 		OAuth: oauth.New(router_path, server_url, enforce_https, api_domain, session_key, accounts_db),
-		APIv0: v0.New(router_path, enforce_https, api_domain, server_url, session_key, accounts_db, email_config, server_name),
+		APIv1: v1.New(router_path, enforce_https, api_domain, server_url, session_key, accounts_db, email_config, server_name),
 	}
 
 	// Link Pages to OAuth providers
@@ -98,7 +98,7 @@ func New(
 
 	// Configure routes
 	srv.App.Route("/oauth", srv.OAuth.Routes)
-	srv.App.Route("/api/v0", srv.APIv0.Routes)
+	srv.App.Route("/api/v1", srv.APIv1.Routes)
 	srv.App.Route("/", srv.Page.Routes)
 
 	// Configure static

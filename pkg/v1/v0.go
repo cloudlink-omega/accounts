@@ -1,4 +1,4 @@
-package v0
+package v1
 
 import (
 	"time"
@@ -11,7 +11,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type APIv0 struct {
+type API struct {
 	MailConfig     *structs.MailConfig
 	ServerNickname string
 	RouterPath     string
@@ -22,10 +22,10 @@ type APIv0 struct {
 	DB             *database.Database
 }
 
-func New(router_path string, enforce_https bool, api_domain string, server_url string, session_key string, db *database.Database, mail_config *structs.MailConfig, nickname string) *APIv0 {
+func New(router_path string, enforce_https bool, api_domain string, server_url string, session_key string, db *database.Database, mail_config *structs.MailConfig, nickname string) *API {
 
 	// Create new instance
-	v := &APIv0{
+	v := &API{
 		EnforceHTTPS:   enforce_https,
 		APIDomain:      api_domain,
 		Auth:           authorization.New(server_url, session_key, db),
@@ -38,10 +38,14 @@ func New(router_path string, enforce_https bool, api_domain string, server_url s
 	v.Routes = func(router fiber.Router) {
 		router.Post("/login", v.LoginEndpoint)
 		router.Post("/register", v.RegisterEndpoint)
+
 		router.Get("/logout", v.LogoutEndpoint)
 		router.Get("/verify", v.VerifyEndpoint)
+
 		router.Get("/validate", v.ValidateEndpoint)
+
 		router.Get("/check", v.UsernameChecker)
+
 		router.Get("/begin-totp-enrollment", v.EnrollTotpEndpoint)
 		router.Get("/verify-totp-enrollment", v.VerifyTotpEndpoint)
 	}
@@ -50,13 +54,8 @@ func New(router_path string, enforce_https bool, api_domain string, server_url s
 	return v
 }
 
-func (v *APIv0) SetCookie(user *types.User, expiration time.Time, c *fiber.Ctx) {
-	token := v.Auth.Create(&structs.Claims{
-		Email:            user.Email,
-		Username:         user.Username,
-		ULID:             user.ID,
-		IdentityProvider: "local",
-	}, expiration)
+func (v *API) SetCookie(user *types.User, expiration time.Time, c *fiber.Ctx) {
+	token := v.CreateToken(user, expiration)
 	c.Cookie(&fiber.Cookie{
 		Name:     "clomega-authorization",
 		Value:    token,
@@ -68,7 +67,16 @@ func (v *APIv0) SetCookie(user *types.User, expiration time.Time, c *fiber.Ctx) 
 	})
 }
 
-func (v *APIv0) ClearCookie(c *fiber.Ctx) {
+func (v *API) CreateToken(user *types.User, expiration time.Time) string {
+	return v.Auth.Create(&structs.Claims{
+		Email:            user.Email,
+		Username:         user.Username,
+		ULID:             user.ID,
+		IdentityProvider: "local",
+	}, expiration)
+}
+
+func (v *API) ClearCookie(c *fiber.Ctx) {
 	c.Cookie(&fiber.Cookie{
 		Name:     "clomega-authorization",
 		Path:     "/",

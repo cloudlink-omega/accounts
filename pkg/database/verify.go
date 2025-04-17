@@ -30,6 +30,18 @@ func (d *Database) VerifyCode(user string, code string) (bool, error) {
 	return true, nil
 }
 
+func (d *Database) GetVerificationCode(user string) (string, error) {
+	var vc types.Verification
+	err := d.DB.
+		Where("user_id = ?", user).
+		First(&vc).Error
+
+	if err != nil {
+		return "", err
+	}
+	return vc.Code, nil
+}
+
 func (d *Database) DeleteVerificationCode(user string, code string) error {
 	return d.DB.
 		Where("user_id = ? AND code = ?", user, code).

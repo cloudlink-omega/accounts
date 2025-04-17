@@ -62,27 +62,7 @@ if ("{{ .Redirect }}" != "") {
     }, 3000);
 } else {
     $(`#logout`)[0].addEventListener("click", async function(event) {
-        event.preventDefault(); // Prevent the default behavior
-
-        // Hide messages
-        $(`#red_message`)[0].classList.add("hidden");
-    
-        // Show the loading overlay
-        $(`#loadingOverlay`)[0].classList.remove("hidden");
-
-        // Request logout
-        response = await fetch("{{ .BaseURL }}/api/v0/logout");
-    
-        // Artificial 1 second delay - It's called UX design, calm down
-        setTimeout(async() => {
-            if (response.ok) {
-                window.location.replace("{{ .BaseURL }}/?redirect={{ .Redirect }}")
-            } else {
-                $(`#loadingOverlay`)[0].classList.add("hidden");
-                $(`#red_message`)[0].classList.remove("hidden");
-                $(`#red_message`)[0].textContent = await response.text();
-            }
-        }, 1000);
+        window.location.replace("{{ .BaseURL }}/logout?redirect={{ .Redirect }}")
     });
 }
 </script>

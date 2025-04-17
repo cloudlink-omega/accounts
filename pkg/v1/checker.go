@@ -1,4 +1,4 @@
-package v0
+package v1
 
 import (
 	"log"
@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func (v *APIv0) UsernameChecker(c *fiber.Ctx) error {
+func (v *API) UsernameChecker(c *fiber.Ctx) error {
 
 	log.Print(c.Query("username"))
 

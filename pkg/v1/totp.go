@@ -1,4 +1,4 @@
-package v0
+package v1
 
 import (
 	"bytes"
@@ -18,7 +18,7 @@ import (
 	"github.com/goccy/go-json"
 )
 
-func (v *APIv0) EnrollTotpEndpoint(c *fiber.Ctx) error {
+func (v *API) EnrollTotpEndpoint(c *fiber.Ctx) error {
 
 	// Get authorization
 	claims := v.Auth.GetClaims(c)
@@ -56,10 +56,10 @@ func (v *APIv0) EnrollTotpEndpoint(c *fiber.Ctx) error {
 	dataURI := "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
 
 	// Return the QR code and the key as JSON
-	return c.JSON(fiber.Map{"qr": dataURI, "key": key.Secret()})
+	return c.JSON(fiber.Map{"qr": dataURI, "key": fmt.Sprintf("otpauth://totp/%s:%s?algorithm=SHA512&digits=6&issuer=%s&secret=%s", v.ServerNickname, claims.Username, v.ServerNickname, key.Secret())})
 }
 
-func (v *APIv0) VerifyTotpEndpoint(c *fiber.Ctx) error {
+func (v *API) VerifyTotpEndpoint(c *fiber.Ctx) error {
 
 	// Get authorization
 	claims := v.Auth.GetClaims(c)
@@ -91,7 +91,7 @@ func (v *APIv0) VerifyTotpEndpoint(c *fiber.Ctx) error {
 		totp.ValidateOpts{
 			Digits:    otp.DigitsSix,
 			Period:    30,
-			Skew:      1,
+			Skew:      2, // TODO: adjust this
 			Algorithm: otp.AlgorithmSHA512,
 		})
 	if err != nil {

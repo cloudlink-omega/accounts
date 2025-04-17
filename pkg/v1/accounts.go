@@ -1,4 +1,4 @@
-package v0
+package v1
 
 import (
 	"fmt"
@@ -21,6 +21,11 @@ import (
 	"github.com/oklog/ulid/v2"
 )
 
+type ValidationData struct {
+	VerifiedEmail bool `json:"verified_email"`
+	*structs.Claims
+}
+
 type Credentials struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
@@ -28,12 +33,19 @@ type Credentials struct {
 	TOTP     string `json:"totp"`
 }
 
-func (v *APIv0) LoginEndpoint(c *fiber.Ctx) error {
+type Result struct {
+	Token  string `json:"token,omitempty"`
+	Result string `json:"result"`
+}
+
+func (v *API) LoginEndpoint(c *fiber.Ctx) error {
+	c.Set("Content-Type", "application/json")
 
 	// Check if the user  is already logged in. If so, tell them
 	if v.Auth.Valid(c) {
 		c.Status(fiber.StatusBadRequest)
-		return c.SendString("already logged in")
+		message, _ := json.Marshal(&Result{Result: "already logged in"})
+		return c.SendString(string(message))
 	}
 
 	// Try to read the contents, accept JSON or form data
@@ -41,14 +53,12 @@ func (v *APIv0) LoginEndpoint(c *fiber.Ctx) error {
 	creds.Email = c.FormValue("email")
 	creds.Password = c.FormValue("password")
 	creds.TOTP = c.FormValue("totp")
-	if c.Body() != nil {
-		json.Unmarshal(c.Body(), &creds)
-	}
 
 	// Require email field
 	if creds.Email == "" {
 		c.Status(fiber.StatusBadRequest)
-		return c.SendString("missing email field")
+		message, _ := json.Marshal(&Result{Result: "missing email"})
+		return c.SendString(string(message))
 	}
 
 	// Check if the account exists.
@@ -58,19 +68,22 @@ func (v *APIv0) LoginEndpoint(c *fiber.Ctx) error {
 	}
 	if user == nil {
 		c.Status(fiber.StatusUnauthorized)
-		return c.SendString("account not found")
+		message, _ := json.Marshal(&Result{Result: "account not found"})
+		return c.SendString(string(message))
 	}
 
 	// Read account flags to see if the user only has OAuth
 	if user.State.Read(constants.USER_IS_OAUTH_ONLY) {
 		c.Status(fiber.StatusBadRequest)
-		return c.SendString("use oauth to log in")
+		message, _ := json.Marshal(&Result{Result: "use oauth to log in"})
+		return c.SendString(string(message))
 	}
 
 	// Require password field
 	if creds.Password == "" {
 		c.Status(fiber.StatusBadRequest)
-		return c.SendString("missing password field")
+		message, _ := json.Marshal(&Result{Result: "missing password"})
+		return c.SendString(string(message))
 	}
 
 	// Check if the password has six numbers at the end (legacy client compatibility). If so, read it as TOTP and trim it from the password.
@@ -82,7 +95,8 @@ func (v *APIv0) LoginEndpoint(c *fiber.Ctx) error {
 	// Verify password
 	if scrypt.CompareHashAndPassword([]byte(user.Password), []byte(creds.Password)) != nil {
 		c.Status(fiber.StatusUnauthorized)
-		return c.SendString("invalid password")
+		message, _ := json.Marshal(&Result{Result: "invalid password"})
+		return c.SendString(string(message))
 	}
 
 	// Read account flags to see if the user needs TOTP
@@ -91,7 +105,8 @@ func (v *APIv0) LoginEndpoint(c *fiber.Ctx) error {
 		// Require TOTP
 		if creds.TOTP == "" || len(creds.TOTP) != 6 {
 			c.Status(fiber.StatusBadRequest)
-			return c.SendString("totp required")
+			message, _ := json.Marshal(&Result{Result: "totp required"})
+			return c.SendString(string(message))
 		}
 
 		// Get secret
@@ -113,23 +128,25 @@ func (v *APIv0) LoginEndpoint(c *fiber.Ctx) error {
 		}
 		if !success {
 			c.SendStatus(fiber.StatusUnauthorized)
-			return c.SendString("invalid code")
+			message, _ := json.Marshal(&Result{Result: "invalid code"})
+			return c.SendString(string(message))
 		}
 	}
 
 	// Create a new JWT for this user. Session expires in 24 hours.
 	v.SetCookie(user, time.Now().Add(24*time.Hour), c)
-
-	// Return "OK"
-	return c.SendString("OK")
+	message, _ := json.Marshal(&Result{Result: "OK"})
+	return c.SendString(string(message))
 }
 
-func (v *APIv0) RegisterEndpoint(c *fiber.Ctx) error {
+func (v *API) RegisterEndpoint(c *fiber.Ctx) error {
+	c.Set("Content-Type", "application/json")
 
 	// Check if the user  is already logged in. If so, tell them
 	if v.Auth.Valid(c) {
 		c.Status(fiber.ErrBadRequest.Code)
-		return c.SendString("already logged in")
+		message, _ := json.Marshal(&Result{Result: "already logged in"})
+		return c.SendString(string(message))
 	}
 
 	// Try to read the contents, accept JSON or form data
@@ -137,14 +154,12 @@ func (v *APIv0) RegisterEndpoint(c *fiber.Ctx) error {
 	creds.Email = c.FormValue("email")
 	creds.Password = c.FormValue("password")
 	creds.Username = c.FormValue("username")
-	if c.Body() != nil {
-		json.Unmarshal(c.Body(), &creds)
-	}
 
 	// Check if the email provided already exists.
 	if user, err := v.DB.GetUserByEmail(creds.Email); err == nil && user != nil {
 		c.Status(fiber.ErrConflict.Code)
-		return c.SendString("email already in use")
+		message, _ := json.Marshal(&Result{Result: "email already in use"})
+		return c.SendString(string(message))
 	} else if err != nil {
 		panic(err)
 	}
@@ -152,7 +167,8 @@ func (v *APIv0) RegisterEndpoint(c *fiber.Ctx) error {
 	// Check if the username provided already exists.
 	if exists, err := v.DB.DoesNameExist(creds.Username); err == nil && exists {
 		c.Status(fiber.ErrConflict.Code)
-		return c.SendString("username already in use")
+		message, _ := json.Marshal(&Result{Result: "username already in use"})
+		return c.SendString(string(message))
 	} else if err != nil {
 		panic(err)
 	}
@@ -196,15 +212,15 @@ func (v *APIv0) RegisterEndpoint(c *fiber.Ctx) error {
 			Nickname: v.ServerNickname,
 		}, fmt.Sprintf(`Hello %s, You are receiving this email because you recently created a CloudLink Omega account on server %s.
 
-			To verify your account, please enter the following code on the verification page: %s.
+			To verify your account, please use the following verification code: %s.
 
 			If you did not create this account, you can safely ignore this email.
 
 			Regards,
 			- %s.`, user.Username, v.ServerNickname, code, v.ServerNickname))
 
-		// Return "OK"
-		return c.SendString("OK")
+		message, _ := json.Marshal(&Result{Result: "OK"})
+		return c.SendString(string(message))
 	}
 
 	// Set the user's state to "verified" and "active"
@@ -214,38 +230,99 @@ func (v *APIv0) RegisterEndpoint(c *fiber.Ctx) error {
 		panic(err)
 	}
 
-	return c.SendString("OK; Email verification disabled")
+	message, _ := json.Marshal(&Result{Result: "OK; Email verification disabled"})
+	return c.SendString(string(message))
 }
 
-func (v *APIv0) LogoutEndpoint(c *fiber.Ctx) error {
+func (v *API) LogoutEndpoint(c *fiber.Ctx) error {
+	c.Set("Content-Type", "application/json")
 
-	// Check if the user is already logged out. If so, tell them
 	if !v.Auth.Valid(c) {
-		return c.SendString("already logged out")
+		message, _ := json.Marshal(&Result{Result: "already logged out"})
+		return c.SendString(string(message))
 	}
-
-	// Destroy the session by setting the cookie to expire
 	v.ClearCookie(c)
 
 	// Done
-	return c.SendString("OK")
+	message, _ := json.Marshal(&Result{Result: "OK"})
+	return c.SendString(string(message))
+}
+
+func (v *API) ResendVerification(c *fiber.Ctx) error {
+
+	c.Set("Content-Type", "text/plain")
+
+	// Attempt to get claims based on token or cookie
+	claims := v.Auth.GetClaims(c)
+
+	// Check if the user flags indicate they are already verified
+	user := v.DB.GetUser(claims.ULID)
+	registered := user.State.Read(constants.USER_IS_EMAIL_REGISTERED)
+	if registered {
+		c.SendStatus(fiber.StatusBadRequest)
+		message, _ := json.Marshal(&Result{Result: "email already verified"})
+		return c.SendString(string(message))
+	}
+
+	// Read the user ID from the request
+	if c.Query("code") == "" {
+		c.SendStatus(fiber.StatusBadRequest)
+		message, _ := json.Marshal(&Result{Result: "missing verification code"})
+		return c.SendString(string(message))
+	}
+
+	// Get the verification code in the database
+	code, err := v.DB.GetVerificationCode(claims.ID)
+	if err != nil {
+		panic(err)
+	}
+
+	// Send the verification code to the user's email
+	email.SendPlainEmail(v.MailConfig, &structs.EmailArgs{
+		Subject:  "Verify your account",
+		To:       claims.Email,
+		Nickname: v.ServerNickname,
+	}, fmt.Sprintf(`Hello %s, You are receiving this email because you recently requested another verification code for your CloudLink Omega account on server %s.
+
+		To verify your account, please use the following verification code: %s.
+
+		If you did not create this account, you can safely ignore this email.
+
+		Regards,
+		- %s.`, claims.Username, v.ServerNickname, code, v.ServerNickname))
+
+	message, _ := json.Marshal(&Result{Result: "OK"})
+	return c.SendString(string(message))
 }
 
 type errormessage struct {
 	Error string `json:"error"`
 }
 
-func (v *APIv0) ValidateEndpoint(c *fiber.Ctx) error {
+func (v *API) ValidateEndpoint(c *fiber.Ctx) error {
 	c.Set("Content-Type", "application/json")
-	user := v.Auth.GetClaims(c)
-	if user == nil {
+
+	// Attempt to get claims based on token or cookie
+	claims := v.Auth.GetClaims(c)
+
+	// Check if the user is logged in
+	if claims == nil {
 		c.SendStatus(fiber.StatusUnauthorized)
 		message, _ := json.Marshal(&errormessage{
 			Error: "not logged in",
 		})
 		return c.SendString(string(message))
 	}
-	result, err := json.Marshal(user)
+
+	// Read user flags
+	user := v.DB.GetUser(claims.ULID)
+	output := &ValidationData{
+		Claims:        claims,
+		VerifiedEmail: user.State.Read(constants.USER_IS_EMAIL_REGISTERED),
+	}
+
+	// Send the claims
+	result, err := json.Marshal(output)
 	if err != nil {
 		c.SendStatus(fiber.StatusInternalServerError)
 		message, _ := json.Marshal(&errormessage{
@@ -257,19 +334,26 @@ func (v *APIv0) ValidateEndpoint(c *fiber.Ctx) error {
 	return c.SendString(string(result))
 }
 
-func (v *APIv0) VerifyEndpoint(c *fiber.Ctx) error {
+func (v *API) VerifyEndpoint(c *fiber.Ctx) error {
+	c.Set("Content-Type", "text/plain")
 
-	// Get authorization
+	// Attempt to get claims based on token or cookie
 	claims := v.Auth.GetClaims(c)
-	if claims == nil {
-		c.SendStatus(fiber.StatusUnauthorized)
-		return c.SendString("not logged in")
+
+	// Check if the user flags indicate they are already verified
+	user := v.DB.GetUser(claims.ULID)
+	registered := user.State.Read(constants.USER_IS_EMAIL_REGISTERED)
+	if registered {
+		c.SendStatus(fiber.StatusBadRequest)
+		message, _ := json.Marshal(&Result{Result: "email already verified"})
+		return c.SendString(string(message))
 	}
 
 	// Read the user ID from the request
 	if c.Query("code") == "" {
 		c.SendStatus(fiber.StatusBadRequest)
-		return c.SendString("code required")
+		message, _ := json.Marshal(&Result{Result: "missing verification code"})
+		return c.SendString(string(message))
 	}
 
 	// Ask the database if the verification code is valid
@@ -283,7 +367,8 @@ func (v *APIv0) VerifyEndpoint(c *fiber.Ctx) error {
 
 	if !verified {
 		c.SendStatus(fiber.StatusBadRequest)
-		return c.SendString("invalid verification code")
+		message, _ := json.Marshal(&Result{Result: "invalid verification code"})
+		return c.SendString(string(message))
 	}
 
 	// Remove the verification code from the database
@@ -292,7 +377,6 @@ func (v *APIv0) VerifyEndpoint(c *fiber.Ctx) error {
 	}
 
 	// Set the user's state to "verified" and "active"
-	user := v.DB.GetUser(claims.ULID)
 	user.State.Set(constants.USER_IS_EMAIL_REGISTERED)
 	user.State.Set(constants.USER_IS_ACTIVE)
 
@@ -300,5 +384,6 @@ func (v *APIv0) VerifyEndpoint(c *fiber.Ctx) error {
 		panic(err)
 	}
 
-	return c.SendString("OK")
+	message, _ := json.Marshal(&Result{Result: "OK"})
+	return c.SendString(string(message))
 }

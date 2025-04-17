@@ -129,7 +129,7 @@
 
         // Submit for processing
         response = await fetch(
-            "{{ .BaseURL }}/api/v0/login", {
+            "{{ .BaseURL }}/api/v1/login", {
                 method: "POST",
                 body: new FormData($(`#login`)[0]),
             }
@@ -137,8 +137,8 @@
     
         // Artificial 1 second delay - It's called UX design, calm down
         setTimeout(async() => {
-            message = await response.text();
-            switch (message) {
+            message = await response.json();
+            switch (message.result) {
 
                 case "OK":
                     if ("{{ .Redirect }}" != "") {

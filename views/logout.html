@@ -37,7 +37,7 @@ $(`#logout`)[0].addEventListener("click", async function(event) {
     $(`#loadingOverlay`)[0].classList.remove("hidden");
 
     // Request logout
-    response = await fetch("{{ .BaseURL }}/api/v0/logout");
+    response = await fetch("{{ .BaseURL }}/api/v1/logout");
     setTimeout(async() => {
         $(`#loadingOverlay`)[0].classList.add("hidden");
 
@@ -47,11 +47,19 @@ $(`#logout`)[0].addEventListener("click", async function(event) {
             $(`#green_message`)[0].classList.remove("hidden");
             $(`#green_message`)[0].textContent = "You have been logged out.";
 
+            
             setTimeout(async() => {
                 $(`#loadingOverlay`)[0].classList.remove("hidden");
-                setTimeout(async() => {
-                    window.location.replace("{{ .Redirect }}");
-                }, 1000);
+                if ("{{ .Redirect }}" != "") {
+                    setTimeout(async() => {
+                        window.location.replace("{{ .Redirect }}");
+                    }, 1000);
+                } else {
+                    setTimeout(async() => {
+                        window.location.replace("{{ .BaseURL }}");
+                    }, 1000);
+                }
+                
             }, 3000);
 
         } else {

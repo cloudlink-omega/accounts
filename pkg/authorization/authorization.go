@@ -44,6 +44,20 @@ func (s *Auth) GetClaims(c *fiber.Ctx) *structs.Claims {
 	return claims
 }
 
+func (s *Auth) GetClaimsFromLegacyToken(c *fiber.Ctx, token string) *structs.Claims {
+	claims := &structs.Claims{}
+	tkn, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (any, error) {
+		return []byte(s.SessionKey), nil
+	})
+	if err != nil {
+		panic(err)
+	}
+	if !tkn.Valid {
+		panic(fiber.ErrUnauthorized)
+	}
+	return claims
+}
+
 func (s *Auth) GetState(state_data string) (*structs.State, error) {
 	state := &structs.State{}
 	tkn, err := jwt.ParseWithClaims(state_data, state, func(token *jwt.Token) (any, error) {
@@ -64,6 +78,13 @@ func (s *Auth) Valid(c *fiber.Ctx) bool {
 		return false
 	}
 	tkn, err := jwt.Parse(cookie, func(token *jwt.Token) (any, error) {
+		return []byte(s.SessionKey), nil
+	})
+	return err == nil && tkn.Valid
+}
+
+func (s *Auth) ValidFromLegacyToken(c *fiber.Ctx, token string) bool {
+	tkn, err := jwt.Parse(token, func(token *jwt.Token) (any, error) {
 		return []byte(s.SessionKey), nil
 	})
 	return err == nil && tkn.Valid

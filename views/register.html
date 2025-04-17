@@ -287,7 +287,7 @@
         $(`#loadingOverlay`)[0].classList.remove("hidden");
 
         // Check if the playername is taken
-        response = await fetch("{{ .BaseURL }}/api/v0/check?" + new URLSearchParams({ username: $(`#username`)[0].value }));
+        response = await fetch("{{ .BaseURL }}/api/v1/check?" + new URLSearchParams({ username: $(`#username`)[0].value }));
         message = await response.text();
 
         // TODO: something with the results
@@ -389,13 +389,13 @@
         $(`#loadingOverlay`)[0].classList.remove("hidden");
 
         response = await fetch(
-            "{{ .BaseURL }}/api/v0/register", {
+            "{{ .BaseURL }}/api/v1/register", {
             method: "POST",
             body: new FormData($(`#register`)[0]),
         });
 
         console.log(response.statusText);
-        message = await response.text();
+        message = await response.json();
 
         // Artificial 1 second delay - It's called UX design, calm down
         setTimeout(async () => {
@@ -407,20 +407,20 @@
                 $(`#green_message`)[0].textContent = "Account registered and logged in successfully!";
                 
                 // Verify email
-                if (message == "OK") {
+                if (message.result == "OK") {
                     $(`#register`)[0].classList.add("hidden");
                     $(`#verify_email`)[0].classList.remove("hidden");
                 }
                 
                 // Go straight to setting up TOTP
-                if (message == "OK; Email verification disabled") {
+                if (message.result == "OK; Email verification disabled") {
                     $(`#register`)[0].classList.add("hidden");
                     $(`#setup_totp`)[0].classList.remove("hidden");
                 }
 
             } else {
                 $(`#red_message`)[0].classList.remove("hidden");
-                $(`#red_message`)[0].textContent = message;
+                $(`#red_message`)[0].textContent = message.result;
             }
 
         }, 1000);
@@ -453,8 +453,8 @@
         $(`#loadingOverlay`)[0].classList.remove("hidden");
 
         // Submit for processing
-        response = await fetch("{{ .BaseURL }}/api/v0/verify?" + new URLSearchParams({ code: $(`#emailcode`)[0].value }));
-        message = await response.text();
+        response = await fetch("{{ .BaseURL }}/api/v1/verify?" + new URLSearchParams({ code: $(`#emailcode`)[0].value }));
+        message = await response.json();
 
         // Artificial 1 second delay - It's called UX design, calm down
         setTimeout(async () => {
@@ -462,7 +462,7 @@
             // Hide the loading overlay
             $(`#loadingOverlay`)[0].classList.add("hidden");
 
-            if (response.ok || message == "OK") {
+            if (response.ok || message.result == "OK") {
                 $(`#green_message`)[0].classList.remove("hidden");
                 $(`#green_message`)[0].textContent = "Account verified!";
                 $("#verify_email")[0].classList.add("hidden");
@@ -470,7 +470,7 @@
 
             } else {
                 $(`#red_message`)[0].classList.remove("hidden");
-                $(`#red_message`)[0].textContent = message;
+                $(`#red_message`)[0].textContent = message.result;
             }
         }, 1000);
     });
@@ -491,7 +491,7 @@
         $("#setup_totp")[0].classList.add("hidden");
 
         // Request a new verification code and secret
-        response = await fetch("{{ .BaseURL }}/api/v0/begin-totp-enrollment");
+        response = await fetch("{{ .BaseURL }}/api/v1/begin-totp-enrollment");
         message = await response.text();
 
         // Artificial 1 second delay - It's called UX design, calm down
@@ -523,7 +523,7 @@
 
         // Submit the code
         // Submit for processing
-        response = await fetch("{{ .BaseURL }}/api/v0/verify-totp-enrollment?" + new URLSearchParams({ code: $(`#totpcode`)[0].value }));
+        response = await fetch("{{ .BaseURL }}/api/v1/verify-totp-enrollment?" + new URLSearchParams({ code: $(`#totpcode`)[0].value }));
 
         // Artificial 1 second delay - It's called UX design, calm down
         setTimeout(async () => {
