@@ -3,7 +3,7 @@ package pages
 import (
 	"github.com/cloudlink-omega/accounts/pkg/authorization"
 	"github.com/cloudlink-omega/accounts/pkg/database"
-	"github.com/cloudlink-omega/accounts/pkg/types"
+	"github.com/cloudlink-omega/accounts/pkg/structs"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -17,7 +17,7 @@ type Pages struct {
 	ErrorHandler   func(c *fiber.Ctx, err error) error
 	Auth           *authorization.Auth
 	DB             *database.Database
-	Providers      map[string]*types.Provider
+	Providers      map[string]*structs.Provider
 }
 
 func New(router_path string, server_url string, api_url string, server_name string, primary_website string, session_key string, db *database.Database) *Pages {

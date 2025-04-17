@@ -8,8 +8,5 @@ import (
 )
 
 func Sanitized(c *fiber.Ctx, s string) string {
-
-	// TODO: check if redirect URL is local or safe
-
 	return sanitize.URL(strings.ReplaceAll(strings.ReplaceAll(s, "../", ""), "./", ""))
 }

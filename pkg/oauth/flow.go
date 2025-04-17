@@ -8,10 +8,11 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/cloudlink-omega/accounts/pkg/bitfield"
 	"github.com/cloudlink-omega/accounts/pkg/constants"
 	"github.com/cloudlink-omega/accounts/pkg/sanitizer"
-	"github.com/cloudlink-omega/accounts/pkg/types"
+	"github.com/cloudlink-omega/accounts/pkg/structs"
+	"github.com/cloudlink-omega/storage/pkg/bitfield"
+	"github.com/cloudlink-omega/storage/pkg/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/oklog/ulid/v2"
 	"golang.org/x/oauth2"
@@ -45,7 +46,7 @@ func (s *OAuth) begin_oauth_flow(c *fiber.Ctx) error {
 
 	// Create state JWT that will expire in half an hour
 	expiration := time.Now().Add(30 * time.Minute)
-	state := s.Auth.Create(&types.State{Redirect: redirect}, expiration)
+	state := s.Auth.Create(&structs.State{Redirect: redirect}, expiration)
 
 	// Redirect to the OAuth provider
 	return c.Redirect(provider.OAuthConfig.AuthCodeURL(

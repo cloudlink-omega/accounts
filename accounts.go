@@ -7,7 +7,7 @@ import (
 	database "github.com/cloudlink-omega/accounts/pkg/database"
 	oauth "github.com/cloudlink-omega/accounts/pkg/oauth"
 	pages "github.com/cloudlink-omega/accounts/pkg/pages"
-	"github.com/cloudlink-omega/accounts/pkg/types"
+	"github.com/cloudlink-omega/accounts/pkg/structs"
 	v0 "github.com/cloudlink-omega/accounts/pkg/v0"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
@@ -65,7 +65,7 @@ func New(
 	db *gorm.DB,
 
 	// Email configuration
-	email_config *types.MailConfig,
+	email_config *structs.MailConfig,
 
 ) *Accounts {
 

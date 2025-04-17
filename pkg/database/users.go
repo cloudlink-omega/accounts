@@ -3,8 +3,8 @@ package database
 import (
 	"fmt"
 
-	"github.com/cloudlink-omega/accounts/pkg/bitfield"
-	"github.com/cloudlink-omega/accounts/pkg/types"
+	"github.com/cloudlink-omega/storage/pkg/bitfield"
+	"github.com/cloudlink-omega/storage/pkg/types"
 )
 
 func (d *Database) GetUsers() []*types.User {

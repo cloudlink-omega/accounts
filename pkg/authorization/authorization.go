@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/cloudlink-omega/accounts/pkg/database"
-	"github.com/cloudlink-omega/accounts/pkg/types"
+	"github.com/cloudlink-omega/accounts/pkg/structs"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -26,12 +26,12 @@ func New(url string, sessionkey string, db *database.Database) *Auth {
 	}
 }
 
-func (s *Auth) GetClaims(c *fiber.Ctx) *types.Claims {
+func (s *Auth) GetClaims(c *fiber.Ctx) *structs.Claims {
 	cookie := c.Cookies("clomega-authorization")
 	if cookie == "" {
 		return nil
 	}
-	claims := &types.Claims{}
+	claims := &structs.Claims{}
 	tkn, err := jwt.ParseWithClaims(cookie, claims, func(token *jwt.Token) (any, error) {
 		return []byte(s.SessionKey), nil
 	})
@@ -44,8 +44,8 @@ func (s *Auth) GetClaims(c *fiber.Ctx) *types.Claims {
 	return claims
 }
 
-func (s *Auth) GetState(state_data string) (*types.State, error) {
-	state := &types.State{}
+func (s *Auth) GetState(state_data string) (*structs.State, error) {
+	state := &structs.State{}
 	tkn, err := jwt.ParseWithClaims(state_data, state, func(token *jwt.Token) (any, error) {
 		return []byte(s.SessionKey), nil
 	})
@@ -73,7 +73,7 @@ func (s *Auth) Create(claims any, expiration time.Time) string {
 
 	var token *jwt.Token
 	switch c := claims.(type) {
-	case *types.Claims:
+	case *structs.Claims:
 		c.RegisteredClaims = jwt.RegisteredClaims{
 			Issuer:    s.ServerURL,
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -81,7 +81,7 @@ func (s *Auth) Create(claims any, expiration time.Time) string {
 			ExpiresAt: jwt.NewNumericDate(expiration),
 		}
 		token = jwt.NewWithClaims(jwt.SigningMethodHS512, c)
-	case *types.State:
+	case *structs.State:
 		c.RegisteredClaims = jwt.RegisteredClaims{
 			Issuer:    s.ServerURL,
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

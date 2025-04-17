@@ -6,7 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 
-	"github.com/cloudlink-omega/accounts/pkg/types"
+	"github.com/cloudlink-omega/storage/pkg/types"
 	"gorm.io/gorm/clause"
 )
 

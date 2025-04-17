@@ -1,8 +1,11 @@
 module github.com/cloudlink-omega/accounts
 
-go 1.23.2
+go 1.24.1
+
+replace github.com/cloudlink-omega/storage => ..\storage
 
 require (
+	github.com/cloudlink-omega/storage v0.0.0-00010101000000-000000000000
 	github.com/elithrar/simple-scrypt v1.3.0
 	github.com/goccy/go-json v0.10.5
 	github.com/gofiber/fiber/v2 v2.52.6

@@ -6,7 +6,8 @@ import (
 	"github.com/cloudlink-omega/accounts/pkg/authorization"
 	"github.com/cloudlink-omega/accounts/pkg/database"
 	"github.com/cloudlink-omega/accounts/pkg/domain"
-	"github.com/cloudlink-omega/accounts/pkg/types"
+	"github.com/cloudlink-omega/accounts/pkg/structs"
+	"github.com/cloudlink-omega/storage/pkg/types"
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -16,7 +17,7 @@ type OAuth struct {
 	RouterPath   string
 	APIDomain    string
 	EnforceHTTPS bool
-	Providers    map[string]*types.Provider
+	Providers    map[string]*structs.Provider
 	ServerURL    string
 	Routes       func(fiber.Router)
 	Auth         *authorization.Auth
@@ -28,7 +29,7 @@ func New(router_path string, server_url string, enforce_https bool, api_domain s
 	// Create new instance
 	s := &OAuth{
 		RouterPath:   router_path,
-		Providers:    make(map[string]*types.Provider),
+		Providers:    make(map[string]*structs.Provider),
 		ServerURL:    server_url,
 		EnforceHTTPS: enforce_https,
 		APIDomain:    api_domain,
@@ -47,7 +48,7 @@ func New(router_path string, server_url string, enforce_https bool, api_domain s
 }
 
 func (s *OAuth) SetCookie(user *types.User, identity_provider string, expiration time.Time, c *fiber.Ctx) {
-	token := s.Auth.Create(&types.Claims{
+	token := s.Auth.Create(&structs.Claims{
 		Email:            user.Email,
 		Username:         user.Username,
 		ULID:             user.ID,
@@ -110,7 +111,7 @@ func (s *OAuth) GitHub(client_id string, client_secret string) {
 }
 
 func (s *OAuth) create_oauth_provider(provider string, client_id string, client_secret string, scopes []string, userapi string, usernamekey string, emailkey string, endpoint oauth2.Endpoint) {
-	s.Providers[provider] = &types.Provider{
+	s.Providers[provider] = &structs.Provider{
 		AccountEndpoint: userapi,
 		UsernameKey:     usernamekey,
 		EmailKey:        emailkey,

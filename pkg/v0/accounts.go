@@ -9,7 +9,8 @@ import (
 
 	"github.com/cloudlink-omega/accounts/pkg/constants"
 	"github.com/cloudlink-omega/accounts/pkg/email"
-	"github.com/cloudlink-omega/accounts/pkg/types"
+	"github.com/cloudlink-omega/accounts/pkg/structs"
+	"github.com/cloudlink-omega/storage/pkg/types"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 
@@ -189,7 +190,7 @@ func (v *APIv0) RegisterEndpoint(c *fiber.Ctx) error {
 		}
 
 		// Send the verification code to the user's email
-		email.SendPlainEmail(v.MailConfig, &types.EmailArgs{
+		email.SendPlainEmail(v.MailConfig, &structs.EmailArgs{
 			Subject:  "Verify your account",
 			To:       user.Email,
 			Nickname: v.ServerNickname,

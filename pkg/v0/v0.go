@@ -6,12 +6,13 @@ import (
 	"github.com/cloudlink-omega/accounts/pkg/authorization"
 	"github.com/cloudlink-omega/accounts/pkg/database"
 	"github.com/cloudlink-omega/accounts/pkg/domain"
-	"github.com/cloudlink-omega/accounts/pkg/types"
+	"github.com/cloudlink-omega/accounts/pkg/structs"
+	"github.com/cloudlink-omega/storage/pkg/types"
 	"github.com/gofiber/fiber/v2"
 )
 
 type APIv0 struct {
-	MailConfig     *types.MailConfig
+	MailConfig     *structs.MailConfig
 	ServerNickname string
 	RouterPath     string
 	EnforceHTTPS   bool
@@ -21,7 +22,7 @@ type APIv0 struct {
 	DB             *database.Database
 }
 
-func New(router_path string, enforce_https bool, api_domain string, server_url string, session_key string, db *database.Database, mail_config *types.MailConfig, nickname string) *APIv0 {
+func New(router_path string, enforce_https bool, api_domain string, server_url string, session_key string, db *database.Database, mail_config *structs.MailConfig, nickname string) *APIv0 {
 
 	// Create new instance
 	v := &APIv0{
@@ -50,7 +51,7 @@ func New(router_path string, enforce_https bool, api_domain string, server_url s
 }
 
 func (v *APIv0) SetCookie(user *types.User, expiration time.Time, c *fiber.Ctx) {
-	token := v.Auth.Create(&types.Claims{
+	token := v.Auth.Create(&structs.Claims{
 		Email:            user.Email,
 		Username:         user.Username,
 		ULID:             user.ID,

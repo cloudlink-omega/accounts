@@ -3,12 +3,12 @@ package email
 import (
 	"crypto/tls"
 
-	"github.com/cloudlink-omega/accounts/pkg/types"
+	"github.com/cloudlink-omega/accounts/pkg/structs"
 
 	gomail "gopkg.in/mail.v2"
 )
 
-func SendPlainEmail(config *types.MailConfig, args *types.EmailArgs, data string) error {
+func SendPlainEmail(config *structs.MailConfig, args *structs.EmailArgs, data string) error {
 
 	// Create new message
 	m := gomail.NewMessage()
