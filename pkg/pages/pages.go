@@ -37,6 +37,7 @@ func New(router_path string, server_url string, api_url string, server_name stri
 	p.Routes = func(router fiber.Router) {
 		router.Get("/register", p.Register)
 		router.Get("/login", p.Login)
+		router.Get("/logout", p.Logout)
 		router.Get("/recovery", p.RecoveryLanding)
 		router.Get("/", p.Index)
 	}
