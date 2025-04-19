@@ -1,7 +1,6 @@
 package v1
 
 import (
-	"log"
 	"time"
 
 	"github.com/cloudlink-omega/accounts/pkg/constants"
@@ -56,36 +55,10 @@ func (v *API) ResetPasswordEndpoint(c *fiber.Ctx) error {
 		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
 
-	if user.State.Read(constants.USER_IS_TOTP_ENABLED) {
-		log.Println("TOTP enabled for user, re-encrypting backup codes and TOTP secrets...")
-
-		// Load the user's backup codes and TOTP secrets
-		secret := v.DB.GetTotpSecret(user)
-		codes, err := v.DB.GetRecoveryCodes(user)
-		if err != nil {
-			return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
-		}
-
-		// Update password
-		err = v.DB.UpdateUserPassword(user.ID, string(hash))
-		if err != nil {
-			return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
-		}
-
-		// Re-encrypt the backup codes and TOTP secrets
-		v.DB.StoreTotpSecret(user, secret)
-		err = v.DB.StoreRecoveryCodes(user, codes)
-		if err != nil {
-			return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
-		}
-
-	} else {
-
-		// Just update the password
-		err = v.DB.UpdateUserPassword(user.ID, string(hash))
-		if err != nil {
-			return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
-		}
+	// Update the user's password
+	err = v.DB.UpdateUserPassword(user.ID, string(hash))
+	if err != nil {
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
 
 	// Switch to normal session if coming from a recovery session
