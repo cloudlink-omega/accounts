@@ -26,25 +26,23 @@ func New(url string, sessionkey string, db *database.Database) *Auth {
 	}
 }
 
-func (s *Auth) GetClaims(c *fiber.Ctx) *structs.Claims {
+func (s *Auth) GetNormalClaims(c *fiber.Ctx) *structs.Claims {
 	cookie := c.Cookies("clomega-authorization")
 	if cookie == "" {
 		return nil
 	}
-	claims := &structs.Claims{}
-	tkn, err := jwt.ParseWithClaims(cookie, claims, func(token *jwt.Token) (any, error) {
-		return []byte(s.SessionKey), nil
-	})
-	if err != nil {
-		panic(err)
-	}
-	if !tkn.Valid {
-		panic(fiber.ErrUnauthorized)
-	}
-	return claims
+	return s.GetClaimsFromToken(c, cookie)
 }
 
-func (s *Auth) GetClaimsFromLegacyToken(c *fiber.Ctx, token string) *structs.Claims {
+func (s *Auth) GetRecoveryClaims(c *fiber.Ctx) *structs.Claims {
+	cookie := c.Cookies("clomega-recovery")
+	if cookie == "" {
+		return nil
+	}
+	return s.GetClaimsFromToken(c, cookie)
+}
+
+func (s *Auth) GetClaimsFromToken(c *fiber.Ctx, token string) *structs.Claims {
 	claims := &structs.Claims{}
 	tkn, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (any, error) {
 		return []byte(s.SessionKey), nil
@@ -72,18 +70,23 @@ func (s *Auth) GetState(state_data string) (*structs.State, error) {
 	return state, nil
 }
 
-func (s *Auth) Valid(c *fiber.Ctx) bool {
+func (s *Auth) ValidFromNormal(c *fiber.Ctx) bool {
 	cookie := c.Cookies("clomega-authorization")
 	if cookie == "" {
 		return false
 	}
-	tkn, err := jwt.Parse(cookie, func(token *jwt.Token) (any, error) {
-		return []byte(s.SessionKey), nil
-	})
-	return err == nil && tkn.Valid
+	return s.ValidFromToken(c, cookie)
 }
 
-func (s *Auth) ValidFromLegacyToken(c *fiber.Ctx, token string) bool {
+func (s *Auth) ValidFromRecovery(c *fiber.Ctx) bool {
+	cookie := c.Cookies("clomega-recovery")
+	if cookie == "" {
+		return false
+	}
+	return s.ValidFromToken(c, cookie)
+}
+
+func (s *Auth) ValidFromToken(c *fiber.Ctx, token string) bool {
 	tkn, err := jwt.Parse(token, func(token *jwt.Token) (any, error) {
 		return []byte(s.SessionKey), nil
 	})

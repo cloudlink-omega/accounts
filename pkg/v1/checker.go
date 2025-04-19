@@ -1,34 +1,27 @@
 package v1
 
 import (
-	"log"
-
 	"github.com/gofiber/fiber/v2"
 )
 
 func (v *API) UsernameChecker(c *fiber.Ctx) error {
 
-	log.Print(c.Query("username"))
-
 	// Require a username
 	if c.Query("username") == "" {
-		c.SendStatus(fiber.ErrBadRequest.Code)
-		return c.SendString("missing username parameter")
+		return APIResult(c, fiber.StatusBadRequest, "Missing username parameter.", nil)
 	}
 
 	// Require username to be less than 20 characters
 	if len(c.Query("username")) > 20 {
-		c.SendStatus(fiber.ErrBadRequest.Code)
-		return c.SendString("username too long")
+		return APIResult(c, fiber.StatusBadRequest, "Username too long.", nil)
 	}
 
 	// Ask the database if the username is available
 	if exists, err := v.DB.DoesNameExist(c.Query("username")); err != nil {
-		panic(err)
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 	} else if exists {
-		c.SendStatus(fiber.ErrConflict.Code)
-		return c.SendString("unavailable")
+		return APIResult(c, fiber.StatusConflict, "Username unavailable.", nil)
 	}
 
-	return c.SendString("available")
+	return APIResult(c, fiber.StatusOK, "Username available.", nil)
 }

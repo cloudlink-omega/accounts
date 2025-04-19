@@ -2,15 +2,17 @@ package database
 
 import (
 	"errors"
+	"time"
 
 	"github.com/cloudlink-omega/storage/pkg/types"
 	"gorm.io/gorm"
 )
 
-func (d *Database) AddVerificationCode(user string, code string) error {
+func (d *Database) AddVerificationCode(user string, code string, expires time.Time) error {
 	vc := &types.Verification{
-		UserID: user,
-		Code:   code,
+		UserID:    user,
+		Code:      code,
+		ExpiresAt: expires,
 	}
 	return d.DB.Create(&vc).Error
 }
@@ -27,6 +29,12 @@ func (d *Database) VerifyCode(user string, code string) (bool, error) {
 		}
 		return false, err
 	}
+
+	if vc.ExpiresAt.Before(time.Now()) {
+		d.DB.Where("user_id = ? AND code = ?", user, code).Delete(&types.Verification{})
+		return false, nil
+	}
+
 	return true, nil
 }
 
@@ -39,11 +47,16 @@ func (d *Database) GetVerificationCode(user string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	// Renew the expiration time
+	vc.ExpiresAt = time.Now().Add(time.Minute * 15)
+	d.DB.Save(&vc)
+
 	return vc.Code, nil
 }
 
-func (d *Database) DeleteVerificationCode(user string, code string) error {
+func (d *Database) DeleteVerificationCodes(user string) error {
 	return d.DB.
-		Where("user_id = ? AND code = ?", user, code).
+		Where("user_id = ?", user).
 		Delete(&types.Verification{}).Error
 }

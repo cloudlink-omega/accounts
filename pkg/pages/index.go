@@ -1,18 +1,21 @@
 package pages
 
 import (
+	"github.com/cloudlink-omega/accounts/pkg/constants"
 	"github.com/cloudlink-omega/accounts/pkg/sanitizer"
 	"github.com/gofiber/fiber/v2"
 )
 
 func (p *Pages) Index(c *fiber.Ctx) error {
 	c.Context().SetContentType("text/html; charset=utf-8")
-	if p.Auth.Valid(c) {
-		user := p.Auth.GetClaims(c)
+	if p.Auth.ValidFromNormal(c) {
+		claims := p.Auth.GetNormalClaims(c)
+		user := p.DB.GetUser(claims.ULID)
 		return c.Render("views/hello", map[string]any{
 			"BaseURL":        p.RouterPath,
 			"ServerName":     p.ServerName,
 			"PrimaryWebsite": p.PrimaryWebsite,
+			"OAuthOnly":      user.State.Read(constants.USER_IS_OAUTH_ONLY),
 			"Profile":        "/assets/static/img/placeholder.png",
 			"User":           user.Username,
 			"Redirect":       sanitizer.Sanitized(c, c.Query("redirect")),

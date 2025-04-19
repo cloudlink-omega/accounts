@@ -6,7 +6,7 @@ import (
 )
 
 func (p *Pages) Logout(c *fiber.Ctx) error {
-	if p.Auth.Valid(c) {
+	if p.Auth.ValidFromNormal(c) {
 		data := map[string]any{
 			"BaseURL":        p.RouterPath,
 			"ServerName":     p.ServerName,

@@ -38,7 +38,7 @@ func (s *OAuth) begin_oauth_flow(c *fiber.Ctx) error {
 	redirect := sanitizer.Sanitized(c, c.Query("redirect"))
 
 	// Check if the user is already logged in. If so, redirect to the secure page
-	if s.Auth.Valid(c) {
+	if s.Auth.ValidFromNormal(c) {
 		params := url.Values{}
 		params.Add("redirect", redirect)
 		return c.Redirect(fmt.Sprintf("%s?%s", s.ServerURL, params.Encode()), http.StatusSeeOther)
@@ -98,30 +98,48 @@ func (s *OAuth) callback_oauth_flow(c *fiber.Ctx) error {
 	}
 
 	// Consult with the database
-	var user_id string
+	var provider_id string
+	log.Print(api_user)
 	switch api_user["id"].(type) {
 	case string:
-		user_id = api_user["id"].(string)
+		provider_id = api_user["id"].(string)
 	default:
-		user_id = fmt.Sprintf("%v", api_user["id"])
+		provider_id = fmt.Sprintf("%v", api_user["id"])
 	}
 
-	log.Print(user_id)
-
-	user, err := s.DB.GetUserFromProvider(user_id, identity_provider)
+	// Try to find an existing user based on the provider
+	log.Print("Trying to find user based on provider ", identity_provider)
+	user, err := s.DB.GetUserFromProvider(provider_id, identity_provider)
 	if err != nil {
 		panic(err)
 	}
 
+	// Try to find an existing user based on the email address
+	if user == nil {
+		log.Print("Didn't find an existing user, trying to find by email")
+		user, err = s.DB.GetUserByEmail(api_user[provider.EmailKey].(string))
+		if err != nil {
+			panic(err)
+		}
+
+		if user != nil {
+			log.Print("Found a match, going to link user to provider")
+			if err := s.DB.LinkUserToProvider(user.ID, provider_id, identity_provider); err != nil {
+				panic(fmt.Errorf("failed to link user: %w", err))
+			}
+		}
+	}
+
+	// Create a new user if neither of the above worked
 	if user == nil {
 		log.Print("Creating user")
-		userid := ulid.Make()
+		user_id := ulid.Make()
 		var state bitfield.Bitfield8
 		state.Set(constants.USER_IS_EMAIL_REGISTERED)
 		state.Set(constants.USER_IS_ACTIVE)
 		state.Set(constants.USER_IS_OAUTH_ONLY)
 		user = &types.User{
-			ID:       userid.String(),
+			ID:       user_id.String(),
 			Username: api_user[provider.UsernameKey].(string),
 			Email:    api_user[provider.EmailKey].(string),
 			State:    state,
@@ -131,7 +149,7 @@ func (s *OAuth) callback_oauth_flow(c *fiber.Ctx) error {
 			panic(fmt.Errorf("failed to create user: %w", err))
 		}
 
-		if err := s.DB.LinkUserToProvider(user_id, userid.String(), identity_provider); err != nil {
+		if err := s.DB.LinkUserToProvider(user_id.String(), provider_id, identity_provider); err != nil {
 			panic(fmt.Errorf("failed to link user: %w", err))
 		}
 

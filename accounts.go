@@ -108,6 +108,11 @@ func New(
 		Browse:     false,
 	}))
 
+	// Configure 404 handler
+	srv.App.Use(func(c *fiber.Ctx) error {
+		return srv.Page.ErrorPage(c, c.Context().Err())
+	})
+
 	// Return created instance
 	return srv
 }

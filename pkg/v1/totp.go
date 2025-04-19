@@ -12,19 +12,23 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
-
-	scrypt "github.com/elithrar/simple-scrypt"
-
-	"github.com/goccy/go-json"
 )
+
+type EnrollResponse struct {
+	QR  string `json:"qr"`
+	Key string `json:"key"`
+}
+
+type VerifyResponse struct {
+	RecoveryCodes []string `json:"recovery_codes"`
+}
 
 func (v *API) EnrollTotpEndpoint(c *fiber.Ctx) error {
 
 	// Get authorization
-	claims := v.Auth.GetClaims(c)
+	claims := v.Auth.GetNormalClaims(c)
 	if claims == nil {
-		c.SendStatus(fiber.StatusUnauthorized)
-		return c.SendString("not logged in")
+		return APIResult(c, fiber.StatusUnauthorized, "Not logged in!", nil)
 	}
 
 	// Create a new TOTP
@@ -36,51 +40,48 @@ func (v *API) EnrollTotpEndpoint(c *fiber.Ctx) error {
 		Period:      30,
 	})
 	if err != nil {
-		panic(err)
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
 
-	// Store the secret
+	// Store the secret. It will be encrypted by the function.
 	v.DB.StoreTotpSecret(claims.ULID, key.Secret())
 
 	// Generate the QR code
 	var buf bytes.Buffer
 	img, err := key.Image(200, 200)
 	if err != nil {
-		panic(err)
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
 	if err := png.Encode(&buf, img); err != nil {
-		panic(err)
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
 
-	// Serve the QR code as a data URI
-	dataURI := "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
-
 	// Return the QR code and the key as JSON
-	return c.JSON(fiber.Map{"qr": dataURI, "key": fmt.Sprintf("otpauth://totp/%s:%s?algorithm=SHA512&digits=6&issuer=%s&secret=%s", v.ServerNickname, claims.Username, v.ServerNickname, key.Secret())})
+	return APIResult(c, fiber.StatusOK, "OK", &EnrollResponse{
+		QR:  "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes()),
+		Key: fmt.Sprintf("otpauth://totp/%s:%s?algorithm=SHA512&digits=6&issuer=%s&secret=%s", v.ServerNickname, claims.Username, v.ServerNickname, key.Secret()),
+	})
 }
 
 func (v *API) VerifyTotpEndpoint(c *fiber.Ctx) error {
 
 	// Get authorization
-	claims := v.Auth.GetClaims(c)
+	claims := v.Auth.GetNormalClaims(c)
 	if claims == nil {
-		c.SendStatus(fiber.StatusUnauthorized)
-		return c.SendString("not logged in")
+		return APIResult(c, fiber.StatusUnauthorized, "Not logged in!", nil)
 	}
 
 	// Require the token
 	if c.Query("code") == "" {
-		c.SendStatus(fiber.ErrBadRequest.Code)
-		return c.SendString("missing code parameter")
+		return APIResult(c, fiber.StatusBadRequest, "Missing code parameter.", nil)
 	}
 
 	// Require token to be less than 6 characters
 	if len(c.Query("code")) > 6 {
-		c.SendStatus(fiber.ErrBadRequest.Code)
-		return c.SendString("code too long")
+		return APIResult(c, fiber.StatusBadRequest, "Code too long.", nil)
 	}
 
-	// Read the secret from the database
+	// Read the secret from the database. It will be decrypted by the function.
 	secret := v.DB.GetTotpSecret(claims.ULID)
 
 	// Verify the TOTP
@@ -95,54 +96,37 @@ func (v *API) VerifyTotpEndpoint(c *fiber.Ctx) error {
 			Algorithm: otp.AlgorithmSHA512,
 		})
 	if err != nil {
-		panic(err)
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
 	if !success {
-		c.SendStatus(fiber.StatusBadRequest)
-		return c.SendString("invalid code")
+		return APIResult(c, fiber.StatusBadRequest, "Invalid code.", nil)
 	}
 
 	// Read the user's state
 	user := v.DB.GetUser(claims.ULID)
 	if user == nil {
-		panic("no user found")
+		return APIResult(c, fiber.StatusInternalServerError, "Failed to get user.", nil)
 	}
 
 	// Set the user flags necessary to enable TOTP
 	user.State.Set(constants.USER_IS_TOTP_ENABLED)
 	if err := v.DB.UpdateUserState(claims.ULID, user.State); err != nil {
-		panic(err)
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
 
-	// Generate ten randomly generated 10-digit codes used for recovery. TODO: make this generate random words instead
+	// Generate ten randomly generated 10-digit codes used for recovery.
 	var recovery_codes []string
-	for i := 0; i < 10; i++ {
+	for range [10]int{} {
 		recovery_codes = append(recovery_codes, fmt.Sprintf("%10d", rand.Intn(10000000000)))
 	}
 
-	// Hash the recovery codes with scrypt
-	var hashed_codes []string
-	for _, i := range recovery_codes {
-		hash, err := scrypt.GenerateFromPassword([]byte(i), scrypt.DefaultParams)
-		if err != nil {
-			panic(err)
-		}
-		hashed_codes = append(hashed_codes, string(hash))
-	}
-
-	// Store the hashed recovery codes in the database
-	if err := v.DB.StoreRecoveryCodes(claims.ULID, hashed_codes); err != nil {
-		panic(err)
+	// Store the recovery codes in the database. They will be encrypted by the function.
+	if err := v.DB.StoreRecoveryCodes(claims.ULID, recovery_codes); err != nil {
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
 
 	// Return the recovery codes
-	output, err := json.Marshal(struct {
-		RecoveryCodes []string `json:"recovery_codes"`
-	}{
+	return APIResult(c, fiber.StatusOK, "OK", &VerifyResponse{
 		RecoveryCodes: recovery_codes,
 	})
-	if err != nil {
-		panic(err)
-	}
-	return c.SendString(string(output))
 }
