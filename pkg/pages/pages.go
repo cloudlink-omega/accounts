@@ -20,7 +20,7 @@ type Pages struct {
 	Providers      map[string]*structs.Provider
 }
 
-func New(router_path string, server_url string, api_url string, server_name string, primary_website string, session_key string, db *database.Database) *Pages {
+func New(router_path string, server_url string, api_url string, server_name string, primary_website string, server_secret string, db *database.Database) *Pages {
 
 	// Create new instance
 	p := &Pages{
@@ -29,7 +29,7 @@ func New(router_path string, server_url string, api_url string, server_name stri
 		APIURL:         api_url,
 		ServerName:     server_name,
 		PrimaryWebsite: primary_website,
-		Auth:           authorization.New(server_url, session_key, db),
+		Auth:           authorization.New(server_url, server_secret, db),
 		DB:             db,
 	}
 

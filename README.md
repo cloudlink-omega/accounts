@@ -43,7 +43,7 @@ func main() {
         "localhost:3000",        // api_url: The interface that the Account server will listen to.
         "USA-OMEGA-1",           // server_name: Used for labeling the server. Recommended format: [Country Code]-[Server Nickname]-[Designation].
         "localhost:3000",        // primary_website: For use with pointing to any higher-level routers that may be mounted beyond the accounts server.
-        "SESSION_KEY",           // session_key: Used for encrypting and decrypting JWT cookies. For example, use `openssl rand 60 | base64`.
+        "SERVER_SECRET",           // server_secret: Used for encrypting and decrypting JWT cookies, as well as encrypting/decrypting user secrets. For example, use `openssl rand 60 | base64`.
         false,                   // enforce_https: Set to true if you are serving over HTTPS. This sets the "HTTPSOnly" value for cookies.
         db,                      // db: Use a database/sql compatible driver and insert an instance here. In this example, I am using SQLite.
 		sqlbuilder.SQLite,       // db_flavor: See huandu/go-sqlbuilder flavors for your specific DB / driver.

@@ -3,6 +3,7 @@ package v1
 import (
 	"fmt"
 	"math/rand"
+	"slices"
 	"time"
 
 	"github.com/cloudlink-omega/accounts/pkg/constants"
@@ -13,11 +14,19 @@ import (
 	"github.com/pquerna/otp/totp"
 )
 
+type SendArgs struct {
+	Email string `json:"email" form:"email"`
+}
+
 func (v *API) SendRecoveryEmail(c *fiber.Ctx) error {
+	var args SendArgs
+	if err := c.BodyParser(&args); err != nil {
+		return APIResult(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
 
 	// If email is enabled, send a verification email. Otherwise, automatically assign the user as verified.
 	if v.MailConfig.Enabled {
-		user, err := v.DB.GetUserByEmail(c.FormValue("email"))
+		user, err := v.DB.GetUserByEmail(args.Email)
 		if err != nil {
 			return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 		}
@@ -61,10 +70,21 @@ func (v *API) SendRecoveryEmail(c *fiber.Ctx) error {
 	return APIResult(c, fiber.StatusServiceUnavailable, "Recovery services unavailable because email is not enabled.", nil)
 }
 
+type ConfirmArgs struct {
+	Email  string `json:"email" form:"email"`
+	TOTP   string `json:"totp" form:"totp"`
+	Code   string `json:"code" form:"code"`
+	Backup string `json:"backup_code" form:"backup_code"`
+}
+
 func (v *API) ConfirmRecoveryEmail(c *fiber.Ctx) error {
+	var args ConfirmArgs
+	if err := c.BodyParser(&args); err != nil {
+		return APIResult(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
 
 	// Read the user ID from the request
-	if c.FormValue("code") == "" {
+	if args.Code == "" {
 		return APIResult(c, fiber.StatusBadRequest, "Missing verification code.", nil)
 	}
 
@@ -72,12 +92,12 @@ func (v *API) ConfirmRecoveryEmail(c *fiber.Ctx) error {
 	var err error
 	var verified bool
 
-	user, err := v.DB.GetUserByEmail(c.FormValue("email"))
+	user, err := v.DB.GetUserByEmail(args.Email)
 	if err != nil {
 		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
 
-	verified, err = v.DB.VerifyCode(user.ID, c.FormValue("code"))
+	verified, err = v.DB.VerifyCode(user.ID, args.Code)
 	if err != nil {
 		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
@@ -88,17 +108,17 @@ func (v *API) ConfirmRecoveryEmail(c *fiber.Ctx) error {
 
 	// Check if TOTP is required
 	if user.State.Read(constants.USER_IS_TOTP_ENABLED) {
-		if c.FormValue("totp") == "" && c.FormValue("backup_code") == "" {
+		if args.TOTP == "" && args.Backup == "" {
 			return APIResult(c, fiber.StatusBadRequest, "TOTP required!", nil)
 
-		} else if c.FormValue("totp") != "" {
+		} else if args.TOTP != "" {
 
 			// Get secret
-			secret := v.DB.GetTotpSecret(user.ID)
+			secret := v.DB.GetTotpSecret(user)
 
 			// Verify the TOTP
 			success, err := totp.ValidateCustom(
-				c.FormValue("totp"),
+				args.TOTP,
 				secret,
 				time.Now().UTC(),
 				totp.ValidateOpts{
@@ -120,28 +140,22 @@ func (v *API) ConfirmRecoveryEmail(c *fiber.Ctx) error {
 			// Verify the backup code
 
 			// Get backup codes
-			backupCodes, err := v.DB.GetRecoveryCodes(user.ID)
+			backupCodes, err := v.DB.GetRecoveryCodes(user)
 			if err != nil {
 				return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 			}
 
 			// Check if there is a match in the backup codes
-			var match bool
-			match = false
-			for i, code := range backupCodes {
-				if code == c.FormValue("backup_code") {
-					match = true
-					backupCodes[i] = backupCodes[len(backupCodes)-1]
-					break
-				}
+			match := slices.Contains(backupCodes, args.Backup)
+			if !match {
+				return APIResult(c, fiber.StatusUnauthorized, "Invalid backup code!", nil)
 			}
 
-			if !match {
-				return APIResult(c, fiber.StatusBadRequest, "Invalid backup code!", nil)
-			}
+			// Delete the backup code
+			backupCodes = slices.Delete(backupCodes, slices.Index(backupCodes, args.Backup), 1)
 
 			// Update the backup codes
-			if err := v.DB.StoreRecoveryCodes(user.ID, backupCodes); err != nil {
+			if err := v.DB.StoreRecoveryCodes(user, backupCodes); err != nil {
 				return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 			}
 		}

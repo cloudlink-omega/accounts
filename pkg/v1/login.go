@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"slices"
 	"strconv"
 	"time"
 
@@ -21,10 +22,9 @@ func (v *API) LoginEndpoint(c *fiber.Ctx) error {
 
 	// Try to read the contents, accept JSON or form data
 	var creds Credentials
-	creds.Email = c.FormValue("email")
-	creds.Password = c.FormValue("password")
-	creds.TOTP = c.FormValue("totp")
-	creds.BackupCode = c.FormValue("backup_code")
+	if err := c.BodyParser(&creds); err != nil {
+		return APIResult(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
 
 	// Require email field
 	if creds.Email == "" {
@@ -70,7 +70,7 @@ func (v *API) LoginEndpoint(c *fiber.Ctx) error {
 		} else if creds.TOTP != "" {
 
 			// Get secret
-			secret := v.DB.GetTotpSecret(user.ID)
+			secret := v.DB.GetTotpSecret(user)
 
 			// Verify the TOTP
 			success, err := totp.ValidateCustom(
@@ -92,38 +92,34 @@ func (v *API) LoginEndpoint(c *fiber.Ctx) error {
 			}
 
 		} else {
-
 			// Verify the backup code
 
 			// Get backup codes
-			backupCodes, err := v.DB.GetRecoveryCodes(user.ID)
+			backupCodes, err := v.DB.GetRecoveryCodes(user)
 			if err != nil {
 				return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 			}
 
 			// Check if there is a match in the backup codes
-			var match bool
-			match = false
-			for i, code := range backupCodes {
-				if code == creds.BackupCode {
-					match = true
-					backupCodes[i] = backupCodes[len(backupCodes)-1]
-					break
-				}
-			}
-
+			match := slices.Contains(backupCodes, creds.BackupCode)
 			if !match {
 				return APIResult(c, fiber.StatusUnauthorized, "Invalid backup code!", nil)
 			}
 
+			// Delete the backup code
+			backupCodes = slices.Delete(backupCodes, slices.Index(backupCodes, creds.BackupCode), 1)
+
 			// Update the backup codes
-			if err := v.DB.StoreRecoveryCodes(user.ID, backupCodes); err != nil {
+			if err := v.DB.StoreRecoveryCodes(user, backupCodes); err != nil {
 				return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 			}
 		}
 	}
 
-	// Create a new JWT for this user. Session expires in 24 hours.
-	v.SetCookie(user, time.Now().Add(24*time.Hour), c)
+	// Create a new session
+	if err := v.CreateSession(c, user, time.Now().Add(24*time.Hour)); err != nil {
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+	}
+
 	return APIResult(c, fiber.StatusOK, "OK", nil)
 }

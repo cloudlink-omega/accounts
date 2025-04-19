@@ -9,9 +9,10 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func (v *API) SetCookie(user *types.User, expiration time.Time, c *fiber.Ctx) {
+func (v *API) SetCookie(user *types.User, session_id string, expiration time.Time, c *fiber.Ctx) {
 	token := v.Auth.Create(&structs.Claims{
 		ClaimType:        0,
+		SessionID:        session_id,
 		Email:            user.Email,
 		Username:         user.Username,
 		ULID:             user.ID,

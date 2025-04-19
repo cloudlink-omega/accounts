@@ -9,6 +9,7 @@ import (
 	"github.com/cloudlink-omega/accounts/pkg/structs"
 	"github.com/cloudlink-omega/storage/pkg/types"
 	"github.com/gofiber/fiber/v2"
+	"github.com/oklog/ulid/v2"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
@@ -24,7 +25,7 @@ type OAuth struct {
 	DB           *database.Database
 }
 
-func New(router_path string, server_url string, enforce_https bool, api_domain string, session_key string, db *database.Database) *OAuth {
+func New(router_path string, server_url string, enforce_https bool, api_domain string, server_secret string, db *database.Database) *OAuth {
 
 	// Create new instance
 	s := &OAuth{
@@ -33,7 +34,7 @@ func New(router_path string, server_url string, enforce_https bool, api_domain s
 		ServerURL:    server_url,
 		EnforceHTTPS: enforce_https,
 		APIDomain:    api_domain,
-		Auth:         authorization.New(server_url, session_key, db),
+		Auth:         authorization.New(server_url, server_secret, db),
 		DB:           db,
 	}
 
@@ -47,8 +48,10 @@ func New(router_path string, server_url string, enforce_https bool, api_domain s
 	return s
 }
 
-func (s *OAuth) SetCookie(user *types.User, identity_provider string, expiration time.Time, c *fiber.Ctx) {
+func (s *OAuth) SetCookie(user *types.User, session_id string, identity_provider string, expiration time.Time, c *fiber.Ctx) {
 	token := s.Auth.Create(&structs.Claims{
+		ClaimType:        0,
+		SessionID:        session_id,
 		Email:            user.Email,
 		Username:         user.Username,
 		ULID:             user.ID,
@@ -122,4 +125,16 @@ func (s *OAuth) create_oauth_provider(provider string, client_id string, client_
 			Endpoint:     endpoint,
 		},
 	}
+}
+
+func (s *OAuth) CreateSession(c *fiber.Ctx, user *types.User, identity_provider string, session_expiry time.Time) error {
+	sessionID := ulid.Make()
+
+	// Store the session ID in the database
+	err := s.DB.CreateSession(user, sessionID.String(), string(c.Request().Header.Peek("Origin")), string(c.Request().Header.Peek("User-Agent")), c.IP(), session_expiry)
+	if err != nil {
+		return err
+	}
+	s.SetCookie(user, sessionID.String(), identity_provider, session_expiry, c)
+	return nil
 }

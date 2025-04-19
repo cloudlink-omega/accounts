@@ -6,9 +6,11 @@ import (
 	"github.com/cloudlink-omega/accounts/pkg/authorization"
 	"github.com/cloudlink-omega/accounts/pkg/database"
 	"github.com/cloudlink-omega/accounts/pkg/structs"
+	"github.com/cloudlink-omega/storage/pkg/types"
 	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
+	"github.com/oklog/ulid/v2"
 )
 
 type API struct {
@@ -28,11 +30,11 @@ type ValidationData struct {
 }
 
 type Credentials struct {
-	Username   string `json:"username"`
-	Email      string `json:"email"`
-	Password   string `json:"password"`
-	TOTP       string `json:"totp"`
-	BackupCode string `json:"backup_code"`
+	Username   string `json:"username" form:"username"`
+	Email      string `json:"email" form:"email"`
+	Password   string `json:"password" form:"password"`
+	TOTP       string `json:"totp" form:"totp"`
+	BackupCode string `json:"backup_code" form:"backup_code"`
 }
 
 type Result struct {
@@ -41,13 +43,13 @@ type Result struct {
 	Result string `json:"result"`
 }
 
-func New(router_path string, enforce_https bool, api_domain string, server_url string, session_key string, db *database.Database, mail_config *structs.MailConfig, nickname string) *API {
+func New(router_path string, enforce_https bool, api_domain string, server_url string, server_secret string, db *database.Database, mail_config *structs.MailConfig, nickname string) *API {
 
 	// Create new instance
 	v := &API{
 		EnforceHTTPS:   enforce_https,
 		APIDomain:      api_domain,
-		Auth:           authorization.New(server_url, session_key, db),
+		Auth:           authorization.New(server_url, server_secret, db),
 		DB:             db,
 		MailConfig:     mail_config,
 		ServerNickname: nickname,
@@ -78,7 +80,7 @@ func New(router_path string, enforce_https bool, api_domain string, server_url s
 
 		// Utilities
 		router.Get("/validate", v.ValidateEndpoint)
-		router.Get("/check", v.UsernameChecker)
+		router.Post("/check", v.UsernameChecker)
 
 		// TOTP setup
 		router.Get("/begin-totp-enrollment", v.EnrollTotpEndpoint)
@@ -98,4 +100,16 @@ func APIResult(c *fiber.Ctx, status int, result string, data any) error {
 	c.SendStatus(status)
 	message, _ := json.Marshal(&Result{Result: result, Data: data})
 	return c.SendString(string(message))
+}
+
+func (v *API) CreateSession(c *fiber.Ctx, user *types.User, session_expiry time.Time) error {
+	sessionID := ulid.Make()
+
+	// Store the session ID in the database
+	err := v.DB.CreateSession(user, sessionID.String(), string(c.Request().Header.Peek("Origin")), string(c.Request().Header.Peek("User-Agent")), c.IP(), session_expiry)
+	if err != nil {
+		return err
+	}
+	v.SetCookie(user, sessionID.String(), session_expiry, c)
+	return nil
 }

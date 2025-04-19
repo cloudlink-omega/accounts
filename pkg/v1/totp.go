@@ -31,10 +31,16 @@ func (v *API) EnrollTotpEndpoint(c *fiber.Ctx) error {
 		return APIResult(c, fiber.StatusUnauthorized, "Not logged in!", nil)
 	}
 
+	// Read the user's data
+	user := v.DB.GetUser(claims.ULID)
+	if user == nil {
+		return APIResult(c, fiber.StatusInternalServerError, "Failed to get user.", nil)
+	}
+
 	// Create a new TOTP
 	key, err := totp.Generate(totp.GenerateOpts{
 		Issuer:      v.ServerNickname,
-		AccountName: claims.Username,
+		AccountName: user.Username,
 		Digits:      otp.DigitsSix,
 		Algorithm:   otp.AlgorithmSHA512,
 		Period:      30,
@@ -44,7 +50,7 @@ func (v *API) EnrollTotpEndpoint(c *fiber.Ctx) error {
 	}
 
 	// Store the secret. It will be encrypted by the function.
-	v.DB.StoreTotpSecret(claims.ULID, key.Secret())
+	v.DB.StoreTotpSecret(user, key.Secret())
 
 	// Generate the QR code
 	var buf bytes.Buffer
@@ -81,8 +87,14 @@ func (v *API) VerifyTotpEndpoint(c *fiber.Ctx) error {
 		return APIResult(c, fiber.StatusBadRequest, "Code too long.", nil)
 	}
 
+	// Read the user's data
+	user := v.DB.GetUser(claims.ULID)
+	if user == nil {
+		return APIResult(c, fiber.StatusInternalServerError, "Failed to get user.", nil)
+	}
+
 	// Read the secret from the database. It will be decrypted by the function.
-	secret := v.DB.GetTotpSecret(claims.ULID)
+	secret := v.DB.GetTotpSecret(user)
 
 	// Verify the TOTP
 	success, err := totp.ValidateCustom(
@@ -92,7 +104,7 @@ func (v *API) VerifyTotpEndpoint(c *fiber.Ctx) error {
 		totp.ValidateOpts{
 			Digits:    otp.DigitsSix,
 			Period:    30,
-			Skew:      2, // TODO: adjust this
+			Skew:      1,
 			Algorithm: otp.AlgorithmSHA512,
 		})
 	if err != nil {
@@ -100,12 +112,6 @@ func (v *API) VerifyTotpEndpoint(c *fiber.Ctx) error {
 	}
 	if !success {
 		return APIResult(c, fiber.StatusBadRequest, "Invalid code.", nil)
-	}
-
-	// Read the user's state
-	user := v.DB.GetUser(claims.ULID)
-	if user == nil {
-		return APIResult(c, fiber.StatusInternalServerError, "Failed to get user.", nil)
 	}
 
 	// Set the user flags necessary to enable TOTP
@@ -121,7 +127,7 @@ func (v *API) VerifyTotpEndpoint(c *fiber.Ctx) error {
 	}
 
 	// Store the recovery codes in the database. They will be encrypted by the function.
-	if err := v.DB.StoreRecoveryCodes(claims.ULID, recovery_codes); err != nil {
+	if err := v.DB.StoreRecoveryCodes(user, recovery_codes); err != nil {
 		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
 

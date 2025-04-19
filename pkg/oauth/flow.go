@@ -138,11 +138,19 @@ func (s *OAuth) callback_oauth_flow(c *fiber.Ctx) error {
 		state.Set(constants.USER_IS_EMAIL_REGISTERED)
 		state.Set(constants.USER_IS_ACTIVE)
 		state.Set(constants.USER_IS_OAUTH_ONLY)
+
+		// Create a 256-bit random secret key that's encrypted with the server's secret key.
+		userSecret, err := s.DB.CreateUserSecret()
+		if err != nil {
+			panic(fmt.Errorf("failed to create user secret: %w", err))
+		}
+
 		user = &types.User{
 			ID:       user_id.String(),
 			Username: api_user[provider.UsernameKey].(string),
 			Email:    api_user[provider.EmailKey].(string),
 			State:    state,
+			Secret:   userSecret,
 		}
 
 		if err := s.DB.CreateUser(user); err != nil {
@@ -160,7 +168,9 @@ func (s *OAuth) callback_oauth_flow(c *fiber.Ctx) error {
 	}
 
 	// Create a new JWT for this user. Session expires in 24 hours.
-	s.SetCookie(user, identity_provider, time.Now().Add(24*time.Hour), c)
+	if err := s.CreateSession(c, user, identity_provider, time.Now().Add(24*time.Hour)); err != nil {
+		panic(err)
+	}
 
 	// Handle redirect
 	if state_data.Redirect != "" {

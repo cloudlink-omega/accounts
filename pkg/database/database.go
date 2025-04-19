@@ -6,7 +6,8 @@ import (
 )
 
 type Database struct {
-	DB *gorm.DB
+	DB           *gorm.DB // The database connection.
+	ServerSecret string   // A 32-byte (256-bit) secret used for encryption/decryption.
 }
 
 func (d *Database) RunMigrations() error {
@@ -18,5 +19,6 @@ func (d *Database) RunMigrations() error {
 		&types.UserDiscord{},
 		&types.UserGitHub{},
 		&types.UserTOTP{},
+		&types.UserSession{},
 	)
 }

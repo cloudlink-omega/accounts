@@ -324,7 +324,14 @@
         $(`#loadingOverlay`)[0].classList.remove("hidden");
 
         // Check if the playername is taken
-        response = await fetch("{{ .BaseURL }}/api/v1/check?" + new URLSearchParams({ username: $(`#username`)[0].value }));
+        checkForm = new FormData();
+        checkForm.append("username", $(`#username`)[0].value);
+        response = await fetch(
+            "{{ .BaseURL }}/api/v1/check", {
+            method: "POST",
+            body: checkForm,
+        });
+
         message = await response.json();
 
         // TODO: something with the results
@@ -539,18 +546,19 @@
 
             if (response.ok) {
                 message = await response.json();
+                recovery_codes = message.data.recovery_codes;
                 
                 // Display the recovery codes. TODO: this could be cleaner
-                $("#totp_recovery_code-1")[0].textContent = message.recovery_codes[0];
-                $("#totp_recovery_code-2")[0].textContent = message.recovery_codes[1];
-                $("#totp_recovery_code-3")[0].textContent = message.recovery_codes[2];
-                $("#totp_recovery_code-4")[0].textContent = message.recovery_codes[3];
-                $("#totp_recovery_code-5")[0].textContent = message.recovery_codes[4];
-                $("#totp_recovery_code-6")[0].textContent = message.recovery_codes[5];
-                $("#totp_recovery_code-7")[0].textContent = message.recovery_codes[6];
-                $("#totp_recovery_code-8")[0].textContent = message.recovery_codes[7];
-                $("#totp_recovery_code-9")[0].textContent = message.recovery_codes[8];
-                $("#totp_recovery_code-10")[0].textContent = message.recovery_codes[9];
+                $("#totp_recovery_code-1")[0].textContent = recovery_codes[0];
+                $("#totp_recovery_code-2")[0].textContent = recovery_codes[1];
+                $("#totp_recovery_code-3")[0].textContent = recovery_codes[2];
+                $("#totp_recovery_code-4")[0].textContent = recovery_codes[3];
+                $("#totp_recovery_code-5")[0].textContent = recovery_codes[4];
+                $("#totp_recovery_code-6")[0].textContent = recovery_codes[5];
+                $("#totp_recovery_code-7")[0].textContent = recovery_codes[6];
+                $("#totp_recovery_code-8")[0].textContent = recovery_codes[7];
+                $("#totp_recovery_code-9")[0].textContent = recovery_codes[8];
+                $("#totp_recovery_code-10")[0].textContent = recovery_codes[9];
 
                 // Display the end of setup
                 $("#totp_enroll")[0].classList.add("hidden");

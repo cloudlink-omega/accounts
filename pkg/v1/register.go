@@ -2,7 +2,7 @@ package v1
 
 import (
 	"fmt"
-	"math/rand"
+	math_rand "math/rand"
 	"time"
 
 	"github.com/cloudlink-omega/accounts/pkg/constants"
@@ -23,9 +23,9 @@ func (v *API) RegisterEndpoint(c *fiber.Ctx) error {
 
 	// Try to read the contents, accept JSON or form data
 	var creds Credentials
-	creds.Email = c.FormValue("email")
-	creds.Password = c.FormValue("password")
-	creds.Username = c.FormValue("username")
+	if err := c.BodyParser(&creds); err != nil {
+		return APIResult(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
 
 	// Check if the email provided already exists.
 	if user, err := v.DB.GetUserByEmail(creds.Email); err == nil && user != nil {
@@ -49,26 +49,41 @@ func (v *API) RegisterEndpoint(c *fiber.Ctx) error {
 		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
 
+	// Create a 256-bit random secret key that's encrypted with the server's secret key.
+	userSecret, err := v.DB.CreateUserSecret()
+	if err != nil {
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+	}
+
 	userid := ulid.Make()
 	user := &types.User{
 		ID:       userid.String(),
 		Username: creds.Username,
 		Email:    creds.Email,
 		Password: string(hash),
+		Secret:   userSecret,
 	}
 
 	if err := v.DB.CreateUser(user); err != nil {
 		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
 
-	// Create a new JWT for this user. Session expires in 24 hours.
-	v.SetCookie(user, time.Now().Add(24*time.Hour), c)
+	// Create a new session
+	sessionID := ulid.Make()
+	sessionExpiry := time.Now().Add(24 * time.Hour)
+
+	// Store the session ID in the database
+	err = v.DB.CreateSession(user, sessionID.String(), string(c.Request().Header.Peek("Origin")), string(c.Request().Header.Peek("User-Agent")), c.IP(), sessionExpiry)
+	if err != nil {
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+	}
+	v.SetCookie(user, sessionID.String(), sessionExpiry, c)
 
 	// If email is enabled, send a verification email. Otherwise, automatically assign the user as verified.
 	if v.MailConfig.Enabled {
 
 		// Generate a random 6-digit verification code
-		code := fmt.Sprintf("%06d", rand.Intn(1000000))
+		code := fmt.Sprintf("%06d", math_rand.Intn(1000000))
 
 		// Store the verification code in the database, which will expire in 15 minutes.
 		if err := v.DB.AddVerificationCode(user.ID, code, time.Now().Add(15*time.Minute)); err != nil {

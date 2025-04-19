@@ -26,6 +26,7 @@ type Accounts struct {
 	Page  *pages.Pages
 	OAuth *oauth.OAuth
 	App   *fiber.App
+	DB    *database.Database
 }
 
 // New creates a new Accounts instance.
@@ -55,8 +56,8 @@ func New(
 	// Primary Website is the URL of the primary website. Consider using it to point to a higher-level router.
 	primary_website string,
 
-	// Session Key is used for encrypting and decrypting JWT cookies.
-	session_key string,
+	// Session Key is used for encrypting and decrypting JWT cookies and user data.
+	server_secret string,
 
 	// Set to "true" to enforce cookies requiring HTTPS.
 	enforce_https bool,
@@ -75,16 +76,17 @@ func New(
 	}
 
 	// Initialize database
-	accounts_db := &database.Database{DB: db}
+	accounts_db := &database.Database{DB: db, ServerSecret: server_secret}
 	if err := accounts_db.RunMigrations(); err != nil {
 		panic(err)
 	}
 
 	// Create new instance
 	srv := &Accounts{
-		Page:  pages.New(router_path, server_url, api_url, server_name, primary_website, session_key, accounts_db),
-		OAuth: oauth.New(router_path, server_url, enforce_https, api_domain, session_key, accounts_db),
-		APIv1: v1.New(router_path, enforce_https, api_domain, server_url, session_key, accounts_db, email_config, server_name),
+		Page:  pages.New(router_path, server_url, api_url, server_name, primary_website, server_secret, accounts_db),
+		OAuth: oauth.New(router_path, server_url, enforce_https, api_domain, server_secret, accounts_db),
+		APIv1: v1.New(router_path, enforce_https, api_domain, server_url, server_secret, accounts_db, email_config, server_name),
+		DB:    accounts_db,
 	}
 
 	// Link Pages to OAuth providers

@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/cloudlink-omega/storage/pkg/bitfield"
 	"github.com/cloudlink-omega/storage/pkg/types"
@@ -102,4 +103,47 @@ func (d *Database) GetSimilarUserByUsername(username string) (*types.User, error
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (d *Database) CreateSession(user *types.User, session_id string, origin string, user_agent string, ip string, expires time.Time) error {
+
+	// Encrypt fields
+	user_agent, _ = d.Encrypt(user, user_agent)
+	origin, _ = d.Encrypt(user, origin)
+	ip, _ = d.Encrypt(user, ip)
+
+	return d.DB.Create(&types.UserSession{
+		ID:        session_id,
+		UserAgent: user_agent,
+		UserID:    user.ID,
+		Origin:    origin,
+		IP:        ip,
+		ExpiresAt: expires,
+	}).Error
+}
+
+func (d *Database) GetSession(session_id string) (*types.UserSession, error) {
+	var session types.UserSession
+	if err := d.DB.First(&session, "id = ?", session_id).Error; err != nil {
+		if err.Error() == "record not found" {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var user types.User
+	if err := d.DB.First(&user, "id = ?", session.UserID).Error; err != nil {
+		return nil, err
+	}
+
+	// Decrypt fields
+	session.UserAgent, _ = d.Decrypt(&user, session.UserAgent)
+	session.Origin, _ = d.Decrypt(&user, session.Origin)
+	session.IP, _ = d.Decrypt(&user, session.IP)
+
+	return &session, nil
+}
+
+func (d *Database) DeleteSession(session_id string) error {
+	return d.DB.Where("id = ?", session_id).Delete(&types.UserSession{}).Error
 }
