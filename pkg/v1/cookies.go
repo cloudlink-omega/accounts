@@ -54,7 +54,7 @@ func (v *API) SetRecoveryCookie(user *types.User, expiration time.Time, c *fiber
 		Path:     "/",
 		Expires:  expiration,
 		Secure:   v.EnforceHTTPS,
-		Domain:   domain.GetDomain(c.Hostname()),
+		Domain:   c.Hostname(),
 		SameSite: fiber.CookieSameSiteNoneMode,
 	})
 }
@@ -65,7 +65,7 @@ func (v *API) ClearRecoveryCookie(c *fiber.Ctx) {
 		Path:     "/",
 		Expires:  time.Now().Add(-1 * time.Hour),
 		Secure:   true,
-		Domain:   domain.GetDomain(c.Hostname()),
+		Domain:   c.Hostname(),
 		SameSite: fiber.CookieSameSiteNoneMode,
 	})
 }

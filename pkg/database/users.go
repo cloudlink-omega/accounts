@@ -144,6 +144,27 @@ func (d *Database) GetSession(session_id string) (*types.UserSession, error) {
 	return &session, nil
 }
 
+func (d *Database) GetAllSessions(user_id string) ([]*types.UserSession, error) {
+	var sessions []*types.UserSession
+	if err := d.DB.Find(&sessions, "user_id = ?", user_id).Error; err != nil {
+		return nil, err
+	}
+
+	var user types.User
+	if err := d.DB.First(&user, "id = ?", user_id).Error; err != nil {
+		return nil, err
+	}
+
+	// Decrypt fields
+	for i, session := range sessions {
+		sessions[i].UserAgent, _ = d.Decrypt(&user, session.UserAgent)
+		sessions[i].Origin, _ = d.Decrypt(&user, session.Origin)
+		sessions[i].IP, _ = d.Decrypt(&user, session.IP)
+	}
+
+	return sessions, nil
+}
+
 func (d *Database) DeleteSession(session_id string) error {
 	return d.DB.Where("id = ?", session_id).Delete(&types.UserSession{}).Error
 }

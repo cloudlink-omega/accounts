@@ -5,10 +5,10 @@ import (
 )
 
 func GetDomain(origin string) string {
-	return remove_port(remove_protocol(origin))
+	return RemovePort(RemoveProtocol(origin))
 }
 
-func remove_port(origin string) string {
+func RemovePort(origin string) string {
 	re := regexp.MustCompile(`([^:/]+)`) // Remove port (*:*)
 	matches := re.FindStringSubmatch(origin)
 	if len(matches) == 2 {
@@ -17,7 +17,7 @@ func remove_port(origin string) string {
 	return origin // Return as-is if no match
 }
 
-func remove_protocol(origin string) string {
+func RemoveProtocol(origin string) string {
 	re := regexp.MustCompile(`^[a-zA-Z]+://`) // Remove protocol (*://)
 	matches := re.FindStringSubmatch(origin)
 	if len(matches) == 2 {
