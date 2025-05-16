@@ -2,6 +2,8 @@ package database
 
 import (
 	"fmt"
+	"log"
+	"sync"
 	"time"
 
 	"github.com/cloudlink-omega/storage/pkg/bitfield"
@@ -107,6 +109,9 @@ func (d *Database) GetSimilarUserByUsername(username string) (*types.User, error
 
 func (d *Database) CreateSession(user *types.User, session_id string, origin string, user_agent string, ip string, expires time.Time) error {
 
+	// Destroy expired sessions
+	d.AutoDestroyExpiredSessions(user.ID)
+
 	// Encrypt fields
 	user_agent, _ = d.Encrypt(user, user_agent)
 	origin, _ = d.Encrypt(user, origin)
@@ -141,28 +146,47 @@ func (d *Database) GetSession(session_id string) (*types.UserSession, error) {
 	session.Origin, _ = d.Decrypt(&user, session.Origin)
 	session.IP, _ = d.Decrypt(&user, session.IP)
 
+	// Destroy expired sessions
+	d.AutoDestroyExpiredSessions(user.ID)
+
 	return &session, nil
 }
 
 func (d *Database) GetAllSessions(user_id string) ([]*types.UserSession, error) {
-	var sessions []*types.UserSession
-	if err := d.DB.Find(&sessions, "user_id = ?", user_id).Error; err != nil {
-		return nil, err
-	}
 
 	var user types.User
 	if err := d.DB.First(&user, "id = ?", user_id).Error; err != nil {
 		return nil, err
 	}
 
-	// Decrypt fields
-	for i, session := range sessions {
-		sessions[i].UserAgent, _ = d.Decrypt(&user, session.UserAgent)
-		sessions[i].Origin, _ = d.Decrypt(&user, session.Origin)
-		sessions[i].IP, _ = d.Decrypt(&user, session.IP)
+	// Destroy expired sessions
+	d.AutoDestroyExpiredSessions(user_id)
+
+	// Get all valid sessions
+	var sessions []*types.UserSession
+	if err := d.DB.Find(&sessions, "user_id = ?", user_id).Error; err != nil {
+		return nil, err
 	}
 
+	// Decrypt fields in parallel
+	var wg sync.WaitGroup
+	for i, session := range sessions {
+		wg.Add(1)
+		go func(i int, session *types.UserSession) {
+			defer wg.Done()
+			log.Println("Decrypting session", session.ID)
+			sessions[i].UserAgent, _ = d.Decrypt(&user, session.UserAgent)
+			sessions[i].Origin, _ = d.Decrypt(&user, session.Origin)
+			sessions[i].IP, _ = d.Decrypt(&user, session.IP)
+		}(i, session)
+	}
+	wg.Wait()
+
 	return sessions, nil
+}
+
+func (d *Database) AutoDestroyExpiredSessions(user_id string) error {
+	return d.DB.Where("user_id = ? AND expires_at < ?", user_id, time.Now()).Delete(&types.UserSession{}).Error
 }
 
 func (d *Database) DeleteSession(session_id string) error {
