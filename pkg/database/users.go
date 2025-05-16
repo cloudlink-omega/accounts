@@ -2,9 +2,10 @@ package database
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"time"
+
+	"github.com/gofiber/fiber/v2/log"
 
 	"github.com/cloudlink-omega/storage/pkg/bitfield"
 	"github.com/cloudlink-omega/storage/pkg/types"
@@ -174,7 +175,7 @@ func (d *Database) GetAllSessions(user_id string) ([]*types.UserSession, error) 
 		wg.Add(1)
 		go func(i int, session *types.UserSession) {
 			defer wg.Done()
-			log.Println("Decrypting session", session.ID)
+			log.Debug("Decrypting session", session.ID)
 			sessions[i].UserAgent, _ = d.Decrypt(&user, session.UserAgent)
 			sessions[i].Origin, _ = d.Decrypt(&user, session.Origin)
 			sessions[i].IP, _ = d.Decrypt(&user, session.IP)

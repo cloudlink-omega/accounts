@@ -3,10 +3,11 @@ package oauth
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/gofiber/fiber/v2/log"
 
 	"github.com/cloudlink-omega/accounts/pkg/constants"
 	"github.com/cloudlink-omega/accounts/pkg/sanitizer"
@@ -99,7 +100,6 @@ func (s *OAuth) callback_oauth_flow(c *fiber.Ctx) error {
 
 	// Consult with the database
 	var provider_id string
-	log.Print(api_user)
 	switch api_user["id"].(type) {
 	case string:
 		provider_id = api_user["id"].(string)
@@ -108,7 +108,7 @@ func (s *OAuth) callback_oauth_flow(c *fiber.Ctx) error {
 	}
 
 	// Try to find an existing user based on the provider
-	log.Print("Trying to find user based on provider ", identity_provider)
+	log.Debug("Trying to find user based on provider ", identity_provider)
 	user, err := s.DB.GetUserFromProvider(provider_id, identity_provider)
 	if err != nil {
 		panic(err)
@@ -116,14 +116,14 @@ func (s *OAuth) callback_oauth_flow(c *fiber.Ctx) error {
 
 	// Try to find an existing user based on the email address
 	if user == nil {
-		log.Print("Didn't find an existing user, trying to find by email")
+		log.Debug("Didn't find an existing user, trying to find by email")
 		user, err = s.DB.GetUserByEmail(api_user[provider.EmailKey].(string))
 		if err != nil {
 			panic(err)
 		}
 
 		if user != nil {
-			log.Print("Found a match, going to link user to provider")
+			log.Debug("Found a match, going to link user to provider")
 			if err := s.DB.LinkUserToProvider(user.ID, provider_id, identity_provider); err != nil {
 				panic(fmt.Errorf("failed to link user: %w", err))
 			}
@@ -132,7 +132,7 @@ func (s *OAuth) callback_oauth_flow(c *fiber.Ctx) error {
 
 	// Create a new user if neither of the above worked
 	if user == nil {
-		log.Print("Creating user")
+		log.Debug("Creating user")
 		user_id := ulid.Make()
 		var state bitfield.Bitfield8
 		state.Set(constants.USER_IS_EMAIL_REGISTERED)
@@ -161,10 +161,10 @@ func (s *OAuth) callback_oauth_flow(c *fiber.Ctx) error {
 			panic(fmt.Errorf("failed to link user: %w", err))
 		}
 
-		log.Print("User created")
+		log.Debug("User created")
 
 	} else {
-		log.Print("Found user")
+		log.Debug("Found user")
 	}
 
 	// Create a new JWT for this user. Session expires in 24 hours.
