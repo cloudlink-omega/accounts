@@ -11,6 +11,7 @@ import (
 	"github.com/cloudlink-omega/storage/pkg/types"
 	scrypt "github.com/elithrar/simple-scrypt"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/oklog/ulid/v2"
 )
 
@@ -79,8 +80,10 @@ func (v *API) RegisterEndpoint(c *fiber.Ctx) error {
 	}
 	v.SetCookie(user, sessionID.String(), sessionExpiry, c)
 
-	// If email is enabled, send a verification email. Otherwise, automatically assign the user as verified.
-	if v.MailConfig.Enabled {
+	// If email is enabled, send a verification email. Otherwise, automatically assign the user as verified. Bypass for localhost if enabled.
+	if v.BypassEmailRegistration {
+		log.Warn("Bypassing email verification!")
+	} else if v.MailConfig.Enabled {
 
 		// Generate a random 6-digit verification code
 		code := fmt.Sprintf("%06d", math_rand.Intn(1000000))

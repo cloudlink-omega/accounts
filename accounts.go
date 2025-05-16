@@ -9,6 +9,7 @@ import (
 	pages "github.com/cloudlink-omega/accounts/pkg/pages"
 	"github.com/cloudlink-omega/accounts/pkg/structs"
 	v1 "github.com/cloudlink-omega/accounts/pkg/v1"
+	"github.com/cloudlink-omega/storage/pkg/common"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/template/html/v2"
@@ -68,6 +69,12 @@ func New(
 	// Email configuration
 	email_config *structs.MailConfig,
 
+	// Set true to bypass email verification during development
+	bypass_email_registration bool,
+
+	// Set to "true" to defer database migration and seeding
+	defer_migrate ...bool,
+
 ) *Accounts {
 
 	// Truncate ending / in router_path if it exists
@@ -77,15 +84,17 @@ func New(
 
 	// Initialize database
 	accounts_db := &database.Database{DB: db, ServerSecret: server_secret}
-	if err := accounts_db.RunMigrations(); err != nil {
-		panic(err)
+	if len(defer_migrate) > 0 && !defer_migrate[0] {
+		if err := common.MigrateAndSeed(accounts_db.DB); err != nil {
+			panic(err)
+		}
 	}
 
 	// Create new instance
 	srv := &Accounts{
 		Page:  pages.New(router_path, server_url, api_url, server_name, primary_website, server_secret, accounts_db),
 		OAuth: oauth.New(router_path, server_url, enforce_https, api_domain, server_secret, accounts_db),
-		APIv1: v1.New(router_path, enforce_https, api_domain, server_url, server_secret, accounts_db, email_config, server_name),
+		APIv1: v1.New(router_path, enforce_https, api_domain, server_url, server_secret, accounts_db, email_config, server_name, bypass_email_registration),
 		DB:    accounts_db,
 	}
 

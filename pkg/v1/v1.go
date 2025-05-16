@@ -14,14 +14,15 @@ import (
 )
 
 type API struct {
-	MailConfig     *structs.MailConfig
-	ServerNickname string
-	RouterPath     string
-	EnforceHTTPS   bool
-	APIDomain      string
-	Routes         func(fiber.Router)
-	Auth           *authorization.Auth
-	DB             *database.Database
+	MailConfig              *structs.MailConfig
+	ServerNickname          string
+	RouterPath              string
+	EnforceHTTPS            bool
+	APIDomain               string
+	Routes                  func(fiber.Router)
+	Auth                    *authorization.Auth
+	DB                      *database.Database
+	BypassEmailRegistration bool
 }
 
 type ValidationData struct {
@@ -43,16 +44,17 @@ type Result struct {
 	Result string `json:"result"`
 }
 
-func New(router_path string, enforce_https bool, api_domain string, server_url string, server_secret string, db *database.Database, mail_config *structs.MailConfig, nickname string) *API {
+func New(router_path string, enforce_https bool, api_domain string, server_url string, server_secret string, db *database.Database, mail_config *structs.MailConfig, nickname string, bypass_email bool) *API {
 
 	// Create new instance
 	v := &API{
-		EnforceHTTPS:   enforce_https,
-		APIDomain:      api_domain,
-		Auth:           authorization.New(server_url, server_secret, db),
-		DB:             db,
-		MailConfig:     mail_config,
-		ServerNickname: nickname,
+		EnforceHTTPS:            enforce_https,
+		APIDomain:               api_domain,
+		Auth:                    authorization.New(server_url, server_secret, db),
+		DB:                      db,
+		MailConfig:              mail_config,
+		ServerNickname:          nickname,
+		BypassEmailRegistration: bypass_email,
 	}
 
 	// Configure default handler for endpoints

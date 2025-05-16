@@ -31,7 +31,7 @@
             <div class="flex flex-col justify-center items-center">
                 <div id="setup_credentials" class="hidden flex flex-col justify-center items-center">
                     <h2 class="text-2xl text-black dark:text-white">Enter your email address.</h2>
-                    <input type="email" id="email" name="email"
+                    <input type="text" id="email" name="email"
                         class="text-2xl block text-center px-4 py-2 mt-4 mb-4 bg-white dark:bg-gray-900 text-black dark:text-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
                         placeholder="Enter your email" required />
                     <h2 class="text-2xl text-black dark:text-white">Next, make a password...</h2>
@@ -383,13 +383,6 @@
         if ($(`#email`)[0].value === "") {
             $(`#red_message`)[0].classList.remove("hidden");
             $(`#red_message`)[0].textContent = "Please enter your email address.";
-            return;
-        }
-
-        // Check if the email is syntax valid
-        if (!/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test($(`#email`)[0].value)) {
-            $(`#red_message`)[0].classList.remove("hidden");
-            $(`#red_message`)[0].textContent = "That doesn't look like a valid email address.";
             return;
         }
 
