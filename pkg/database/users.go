@@ -20,12 +20,12 @@ func (d *Database) GetUsers() []*types.User {
 	return users
 }
 
-func (d *Database) GetUser(id string) *types.User {
+func (d *Database) GetUser(id string) (*types.User, error) {
 	var user types.User
 	if err := d.DB.First(&user, "id = ?", id).Error; err != nil {
-		return nil
+		return nil, err
 	}
-	return &user
+	return &user, nil
 }
 
 func (d *Database) UpdateUserState(id string, state bitfield.Bitfield8) error {
