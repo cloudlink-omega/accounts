@@ -5,6 +5,7 @@ import (
 
 	"github.com/cloudlink-omega/accounts/pkg/constants"
 	"github.com/cloudlink-omega/accounts/pkg/structs"
+	"github.com/cloudlink-omega/storage/pkg/common"
 	"github.com/cloudlink-omega/storage/pkg/types"
 	scrypt "github.com/elithrar/simple-scrypt"
 	"github.com/gofiber/fiber/v2"
@@ -52,14 +53,39 @@ func (v *API) ResetPasswordEndpoint(c *fiber.Ctx) error {
 	// Hash the new password using scrypt
 	hash, err := scrypt.GenerateFromPassword([]byte(args.Password), scrypt.DefaultParams)
 	if err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.SystemEvent{
+			EventID:    "hash_gen_error",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
 
 	// Update the user's password
 	err = v.DB.UpdateUserPassword(user.ID, string(hash))
 	if err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.UserEvent{
+			UserID:     user.ID,
+			EventID:    "user_password_reset_failure",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
+
+	// Log the event
+	common.LogEvent(v.DB.DB, &types.UserEvent{
+		UserID:     user.ID,
+		EventID:    "user_password_reset_success",
+		Details:    "",
+		Successful: true,
+	})
 
 	// Switch to normal session if coming from a recovery session
 	if switch_to_normal {
