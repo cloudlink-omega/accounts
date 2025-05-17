@@ -8,6 +8,7 @@ import (
 	"github.com/cloudlink-omega/accounts/pkg/constants"
 	"github.com/cloudlink-omega/accounts/pkg/email"
 	"github.com/cloudlink-omega/accounts/pkg/structs"
+	"github.com/cloudlink-omega/storage/pkg/common"
 	"github.com/cloudlink-omega/storage/pkg/types"
 	scrypt "github.com/elithrar/simple-scrypt"
 	"github.com/gofiber/fiber/v2"
@@ -33,7 +34,15 @@ func (v *API) RegisterEndpoint(c *fiber.Ctx) error {
 		return APIResult(c, fiber.StatusBadRequest, "Email already in use!", nil)
 
 	} else if err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.SystemEvent{
+			EventID:    "get_user_error",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
 
 	// Check if the username provided already exists.
@@ -41,24 +50,48 @@ func (v *API) RegisterEndpoint(c *fiber.Ctx) error {
 		return APIResult(c, fiber.StatusBadRequest, "Username already in use!", nil)
 
 	} else if err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.SystemEvent{
+			EventID:    "get_user_error",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
 
 	// Hash the password using scrypt
 	hash, err := scrypt.GenerateFromPassword([]byte(creds.Password), scrypt.DefaultParams)
 	if err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.SystemEvent{
+			EventID:    "hash_gen_error",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
 
 	// Create a 256-bit random secret key that's encrypted with the server's secret key.
 	userSecret, err := v.DB.CreateUserSecret()
 	if err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.SystemEvent{
+			EventID:    "secret_gen_error",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
 
-	userid := ulid.Make()
+	userid := ulid.Make().String()
 	user := &types.User{
-		ID:       userid.String(),
+		ID:       userid,
 		Username: creds.Username,
 		Email:    creds.Email,
 		Password: string(hash),
@@ -66,8 +99,24 @@ func (v *API) RegisterEndpoint(c *fiber.Ctx) error {
 	}
 
 	if err := v.DB.CreateUser(user); err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.SystemEvent{
+			EventID:    "create_user_error",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
+
+	// Log the event
+	common.LogEvent(v.DB.DB, &types.UserEvent{
+		UserID:     user.ID,
+		EventID:    "user_created",
+		Details:    "Registered using local identity",
+		Successful: true,
+	})
 
 	// Create a new session
 	sessionID := ulid.Make()
@@ -76,13 +125,31 @@ func (v *API) RegisterEndpoint(c *fiber.Ctx) error {
 	// Store the session ID in the database
 	err = v.DB.CreateSession(user, sessionID.String(), string(c.Request().Header.Peek("Origin")), string(c.Request().Header.Peek("User-Agent")), c.IP(), sessionExpiry)
 	if err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.UserEvent{
+			UserID:     user.ID,
+			EventID:    "user_session_error",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
 	v.SetCookie(user, sessionID.String(), sessionExpiry, c)
 
 	// If email is enabled, send a verification email. Otherwise, automatically assign the user as verified. Bypass for localhost if enabled.
 	if v.BypassEmailRegistration {
 		log.Warn("Bypassing email verification!")
+
+		// Log the event
+		common.LogEvent(v.DB.DB, &types.UserEvent{
+			UserID:     user.ID,
+			EventID:    "user_verify_bypassed_test",
+			Details:    "",
+			Successful: true,
+		})
+
 	} else if v.MailConfig.Enabled {
 
 		// Generate a random 6-digit verification code
@@ -90,7 +157,16 @@ func (v *API) RegisterEndpoint(c *fiber.Ctx) error {
 
 		// Store the verification code in the database, which will expire in 15 minutes.
 		if err := v.DB.AddVerificationCode(user.ID, code, time.Now().Add(15*time.Minute)); err != nil {
-			return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+			// Log the event
+			event_id := common.LogEvent(v.DB.DB, &types.UserEvent{
+				UserID:     user.ID,
+				EventID:    "user_verify_set_failure",
+				Details:    err.Error(),
+				Successful: false,
+			})
+
+			return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 		}
 
 		// Send the verification code to the user's email
@@ -111,6 +187,14 @@ func (v *API) RegisterEndpoint(c *fiber.Ctx) error {
 			- %s.`, user.Username, v.ServerNickname, code, v.ServerNickname),
 		)
 
+		// Log the event
+		common.LogEvent(v.DB.DB, &types.UserEvent{
+			UserID:     user.ID,
+			EventID:    "user_verify_sent",
+			Details:    "",
+			Successful: true,
+		})
+
 		return APIResult(c, fiber.StatusOK, "OK", nil)
 	}
 
@@ -120,6 +204,14 @@ func (v *API) RegisterEndpoint(c *fiber.Ctx) error {
 	if err := v.DB.UpdateUserState(user.ID, user.State); err != nil {
 		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
+
+	// Log the event
+	common.LogEvent(v.DB.DB, &types.UserEvent{
+		UserID:     user.ID,
+		EventID:    "user_verify_bypassed_disabled",
+		Details:    "",
+		Successful: true,
+	})
 
 	return APIResult(c, fiber.StatusOK, "OK; Email verification disabled", nil)
 }
