@@ -2,11 +2,13 @@ package database
 
 import (
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2/log"
 
+	"github.com/cloudlink-omega/accounts/pkg/constants"
 	"github.com/cloudlink-omega/storage/pkg/bitfield"
 	"github.com/cloudlink-omega/storage/pkg/types"
 	"gorm.io/gorm"
@@ -151,6 +153,30 @@ func (d *Database) GetSession(session_id string) (*types.UserSession, error) {
 	d.AutoDestroyExpiredSessions(user.ID)
 
 	return &session, nil
+}
+
+func (d *Database) GetUserLogs(user_id string, page int) ([]*constants.UserLog, int64, error) {
+	var logs []*constants.UserLog
+	var events []*types.UserEvent
+	result := d.DB.Preload("Event").Where("user_id = ?", user_id).Find(&events).Limit(20).Offset(page * 20).Order("created_at DESC")
+
+	if result.Error != nil {
+		return nil, 0, result.Error
+	}
+
+	var totalCount int64
+	d.DB.Model(&types.UserEvent{}).Where("user_id = ?", user_id).Count(&totalCount)
+
+	for _, event := range events {
+		logs = append(logs, &constants.UserLog{
+			Timestamp: event.CreatedAt,
+			Action:    event.Event.Description,
+			Success:   event.Successful,
+			Message:   event.Details,
+		})
+	}
+
+	return logs, int64(math.Ceil(float64(totalCount) / 20)), nil
 }
 
 func (d *Database) GetAllSessions(user_id string) ([]*types.UserSession, error) {
