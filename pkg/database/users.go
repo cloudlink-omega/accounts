@@ -158,7 +158,7 @@ func (d *Database) GetSession(session_id string) (*types.UserSession, error) {
 func (d *Database) GetUserLogs(user_id string, page int) ([]*constants.UserLog, int64, error) {
 	var logs []*constants.UserLog
 	var events []*types.UserEvent
-	result := d.DB.Preload("Event").Where("user_id = ?", user_id).Find(&events).Limit(20).Offset(page * 20).Order("created_at DESC")
+	result := d.DB.Preload("Event").Where("user_id = ?", user_id).Find(&events).Order("created_at ASC").Limit(20).Offset(page * 20)
 
 	if result.Error != nil {
 		return nil, 0, result.Error
@@ -171,7 +171,9 @@ func (d *Database) GetUserLogs(user_id string, page int) ([]*constants.UserLog, 
 		logs = append(logs, &constants.UserLog{
 			Timestamp: event.CreatedAt,
 			Action:    event.Event.Description,
-			Success:   event.Successful,
+			Success:   event.Successful && event.Event.LogLevel <= types.LogInfo,
+			Warn:      event.Event.LogLevel == types.LogWarn,
+			Fail:      !event.Successful || event.Event.LogLevel >= types.LogError,
 			Message:   event.Details,
 		})
 	}
