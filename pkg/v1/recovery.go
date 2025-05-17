@@ -9,6 +9,8 @@ import (
 	"github.com/cloudlink-omega/accounts/pkg/constants"
 	"github.com/cloudlink-omega/accounts/pkg/email"
 	"github.com/cloudlink-omega/accounts/pkg/structs"
+	"github.com/cloudlink-omega/storage/pkg/common"
+	"github.com/cloudlink-omega/storage/pkg/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
@@ -28,7 +30,15 @@ func (v *API) SendRecoveryEmail(c *fiber.Ctx) error {
 	if v.MailConfig.Enabled {
 		user, err := v.DB.GetUserByEmail(args.Email)
 		if err != nil {
-			return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+			// Log the event
+			event_id := common.LogEvent(v.DB.DB, &types.SystemEvent{
+				EventID:    "get_user_error",
+				Details:    err.Error(),
+				Successful: false,
+			})
+
+			return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 		}
 
 		if user == nil {
@@ -45,7 +55,16 @@ func (v *API) SendRecoveryEmail(c *fiber.Ctx) error {
 
 		// Store the verification code in the database, with a 15 minute expiration
 		if err := v.DB.AddVerificationCode(user.ID, code, time.Now().Add(15*time.Minute)); err != nil {
-			return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+			// Log the event
+			event_id := common.LogEvent(v.DB.DB, &types.UserEvent{
+				UserID:     user.ID,
+				EventID:    "user_password_reset_failure",
+				Details:    err.Error(),
+				Successful: false,
+			})
+
+			return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 		}
 
 		// Send the verification code to the user's email
@@ -63,6 +82,14 @@ func (v *API) SendRecoveryEmail(c *fiber.Ctx) error {
 
 			Regards,
 			- %s.`, user.Username, v.ServerNickname, code, v.ServerNickname))
+
+		// Log the event
+		common.LogEvent(v.DB.DB, &types.UserEvent{
+			UserID:     user.ID,
+			EventID:    "user_password_reset_sent",
+			Details:    "",
+			Successful: true,
+		})
 
 		return APIResult(c, fiber.StatusOK, "OK", nil)
 	}
@@ -94,12 +121,29 @@ func (v *API) ConfirmRecoveryEmail(c *fiber.Ctx) error {
 
 	user, err := v.DB.GetUserByEmail(args.Email)
 	if err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.SystemEvent{
+			EventID:    "get_user_error",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
 
 	verified, err = v.DB.VerifyCode(user.ID, args.Code)
 	if err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.UserEvent{
+			UserID:     user.ID,
+			EventID:    "user_verify_failure",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
 
 	if !verified {
@@ -128,7 +172,15 @@ func (v *API) ConfirmRecoveryEmail(c *fiber.Ctx) error {
 					Algorithm: otp.AlgorithmSHA512,
 				})
 			if err != nil {
-				return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+				// Log the event
+				event_id := common.LogEvent(v.DB.DB, &types.SystemEvent{
+					EventID:    "totp_error",
+					Details:    err.Error(),
+					Successful: false,
+				})
+
+				return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 			}
 
 			if !success {
@@ -142,7 +194,16 @@ func (v *API) ConfirmRecoveryEmail(c *fiber.Ctx) error {
 			// Get backup codes
 			backupCodes, err := v.DB.GetRecoveryCodes(user)
 			if err != nil {
-				return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+				// Log the event
+				event_id := common.LogEvent(v.DB.DB, &types.UserEvent{
+					UserID:     user.ID,
+					EventID:    "recovery_code_retrieval_error",
+					Details:    err.Error(),
+					Successful: false,
+				})
+
+				return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 			}
 
 			// Check if there is a match in the backup codes
@@ -156,7 +217,16 @@ func (v *API) ConfirmRecoveryEmail(c *fiber.Ctx) error {
 
 			// Update the backup codes
 			if err := v.DB.StoreRecoveryCodes(user, backupCodes); err != nil {
-				return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+				// Log the event
+				event_id := common.LogEvent(v.DB.DB, &types.UserEvent{
+					UserID:     user.ID,
+					EventID:    "recovery_code_store_error",
+					Details:    err.Error(),
+					Successful: false,
+				})
+
+				return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 			}
 		}
 	}
@@ -168,6 +238,14 @@ func (v *API) ConfirmRecoveryEmail(c *fiber.Ctx) error {
 
 	// Create a new JWT for this user. Recovery-only session expires in 1 hour.
 	v.SetRecoveryCookie(user, time.Now().Add(time.Hour), c)
+
+	// Log the event
+	common.LogEvent(v.DB.DB, &types.UserEvent{
+		UserID:     user.ID,
+		EventID:    "user_password_reset_verified",
+		Details:    "",
+		Successful: true,
+	})
 
 	return APIResult(c, fiber.StatusOK, "OK", nil)
 }
