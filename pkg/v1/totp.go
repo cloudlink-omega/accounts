@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/cloudlink-omega/accounts/pkg/constants"
+	"github.com/cloudlink-omega/storage/pkg/common"
+	"github.com/cloudlink-omega/storage/pkg/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
@@ -32,9 +34,27 @@ func (v *API) EnrollTotpEndpoint(c *fiber.Ctx) error {
 	}
 
 	// Read the user's data
-	user := v.DB.GetUser(claims.ULID)
-	if user == nil {
-		return APIResult(c, fiber.StatusInternalServerError, "Failed to get user.", nil)
+	user, err := v.DB.GetUser(claims.ULID)
+	if err != nil {
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.SystemEvent{
+			EventID:    "get_user_error",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, "Failed to get user.", nil, event_id)
+	} else if user == nil {
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.SystemEvent{
+			EventID:    "get_user_error",
+			Details:    "No match found (anomaly?)",
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, "Failed to get user.", nil, event_id)
 	}
 
 	// Create a new TOTP
@@ -56,11 +76,37 @@ func (v *API) EnrollTotpEndpoint(c *fiber.Ctx) error {
 	var buf bytes.Buffer
 	img, err := key.Image(200, 200)
 	if err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.UserEvent{
+			UserID:     user.ID,
+			EventID:    "user_totp_enroll_failure",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
 	if err := png.Encode(&buf, img); err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.UserEvent{
+			UserID:     user.ID,
+			EventID:    "user_totp_enroll_failure",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
+
+	// Log the event
+	common.LogEvent(v.DB.DB, &types.UserEvent{
+		UserID:     user.ID,
+		EventID:    "user_totp_enroll_started",
+		Details:    "",
+		Successful: true,
+	})
 
 	// Return the QR code and the key as JSON
 	return APIResult(c, fiber.StatusOK, "OK", &EnrollResponse{
@@ -88,9 +134,28 @@ func (v *API) VerifyTotpEndpoint(c *fiber.Ctx) error {
 	}
 
 	// Read the user's data
-	user := v.DB.GetUser(claims.ULID)
-	if user == nil {
-		return APIResult(c, fiber.StatusInternalServerError, "Failed to get user.", nil)
+	user, err := v.DB.GetUser(claims.ULID)
+	if err != nil {
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.SystemEvent{
+			EventID:    "get_user_error",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, "Failed to get user.", nil, event_id)
+
+	} else if user == nil {
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.SystemEvent{
+			EventID:    "get_user_error",
+			Details:    "No match found (anomaly?)",
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, "Failed to get user.", nil, event_id)
 	}
 
 	// Read the secret from the database. It will be decrypted by the function.
@@ -108,7 +173,16 @@ func (v *API) VerifyTotpEndpoint(c *fiber.Ctx) error {
 			Algorithm: otp.AlgorithmSHA512,
 		})
 	if err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.UserEvent{
+			UserID:     user.ID,
+			EventID:    "user_totp_enroll_failure",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
 	if !success {
 		return APIResult(c, fiber.StatusBadRequest, "Invalid code.", nil)
@@ -117,8 +191,25 @@ func (v *API) VerifyTotpEndpoint(c *fiber.Ctx) error {
 	// Set the user flags necessary to enable TOTP
 	user.State.Set(constants.USER_IS_TOTP_ENABLED)
 	if err := v.DB.UpdateUserState(claims.ULID, user.State); err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.UserEvent{
+			UserID:     user.ID,
+			EventID:    "user_recovery_set_failure",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
+
+	// Log the event
+	common.LogEvent(v.DB.DB, &types.UserEvent{
+		UserID:     user.ID,
+		EventID:    "user_totp_enroll_success",
+		Details:    "",
+		Successful: true,
+	})
 
 	// Generate ten randomly generated 10-digit codes used for recovery.
 	var recovery_codes []string
@@ -130,6 +221,14 @@ func (v *API) VerifyTotpEndpoint(c *fiber.Ctx) error {
 	if err := v.DB.StoreRecoveryCodes(user, recovery_codes); err != nil {
 		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
+
+	// Log the event
+	common.LogEvent(v.DB.DB, &types.UserEvent{
+		UserID:     user.ID,
+		EventID:    "user_recovery_set",
+		Details:    "",
+		Successful: true,
+	})
 
 	// Return the recovery codes
 	return APIResult(c, fiber.StatusOK, "OK", &VerifyResponse{
