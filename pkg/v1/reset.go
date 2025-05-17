@@ -16,9 +16,7 @@ type ResetArgs struct {
 }
 
 func (v *API) ResetPasswordEndpoint(c *fiber.Ctx) error {
-
 	var claims *structs.Claims
-	var user *types.User
 	var args ResetArgs
 	var switch_to_normal bool
 	if err := c.BodyParser(&args); err != nil {
@@ -37,7 +35,18 @@ func (v *API) ResetPasswordEndpoint(c *fiber.Ctx) error {
 	}
 
 	// Check if the user is using an OAuth provider
-	user = v.DB.GetUser(claims.ULID)
+	user, err := v.DB.GetUser(claims.ULID)
+	if err != nil {
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.SystemEvent{
+			EventID:    "get_user_error",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
+	}
 	if user.State.Read(constants.USER_IS_OAUTH_ONLY) {
 		return APIResult(c, fiber.StatusBadRequest, "You are using an OAuth provider for your account. Please use the OAuth provider to reset your password.", nil)
 	}

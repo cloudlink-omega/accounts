@@ -33,7 +33,7 @@ func (p *Pages) ResetPassword(c *fiber.Ctx) error {
 	}
 
 	// Check if the user is using an OAuth provider
-	user = p.DB.GetUser(claims.ULID)
+	user, _ = p.DB.GetUser(claims.ULID)
 	if user.State.Read(constants.USER_IS_OAUTH_ONLY) {
 		return p.ErrorPage(c, &fiber.Error{
 			Code:    fiber.StatusBadRequest,

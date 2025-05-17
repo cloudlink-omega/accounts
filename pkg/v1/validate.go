@@ -17,7 +17,7 @@ func (v *API) ValidateEndpoint(c *fiber.Ctx) error {
 	}
 
 	// Read user flags
-	user := v.DB.GetUser(claims.ULID)
+	user, _ := v.DB.GetUser(claims.ULID)
 	output := &ValidationData{
 		Claims:        claims,
 		VerifiedEmail: user.State.Read(constants.USER_IS_EMAIL_REGISTERED),

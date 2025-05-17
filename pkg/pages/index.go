@@ -10,7 +10,7 @@ func (p *Pages) Index(c *fiber.Ctx) error {
 	c.Context().SetContentType("text/html; charset=utf-8")
 	if p.Auth.ValidFromNormal(c) {
 		claims := p.Auth.GetNormalClaims(c)
-		user := p.DB.GetUser(claims.ULID)
+		user, _ := p.DB.GetUser(claims.ULID)
 		return c.Render("views/hello", map[string]any{
 			"BaseURL":        p.RouterPath,
 			"ServerName":     p.ServerName,
