@@ -39,9 +39,10 @@ type Credentials struct {
 }
 
 type Result struct {
-	Token  string `json:"token,omitempty"`
-	Data   any    `json:"data,omitempty"`
-	Result string `json:"result"`
+	Token   string `json:"token,omitempty"`
+	Data    any    `json:"data,omitempty"`
+	Result  string `json:"result"`
+	EventID string `json:"error_id,omitempty"`
 }
 
 func New(router_path string, enforce_https bool, api_domain string, server_url string, server_secret string, db *database.Database, mail_config *structs.MailConfig, nickname string, bypass_email bool) *API {
@@ -97,9 +98,15 @@ func New(router_path string, enforce_https bool, api_domain string, server_url s
 	return v
 }
 
-func APIResult(c *fiber.Ctx, status int, result string, data any) error {
+func APIResult(c *fiber.Ctx, status int, result string, data any, event_id ...string) error {
 	c.Set("Content-Type", "application/json")
 	c.SendStatus(status)
+
+	if len(event_id) > 0 && event_id[0] != "" {
+		message, _ := json.Marshal(&Result{Result: result, Data: data, EventID: event_id[0]})
+		return c.SendString(string(message))
+	}
+
 	message, _ := json.Marshal(&Result{Result: result, Data: data})
 	return c.SendString(string(message))
 }
