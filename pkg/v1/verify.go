@@ -6,6 +6,8 @@ import (
 	"github.com/cloudlink-omega/accounts/pkg/constants"
 	"github.com/cloudlink-omega/accounts/pkg/email"
 	"github.com/cloudlink-omega/accounts/pkg/structs"
+	"github.com/cloudlink-omega/storage/pkg/common"
+	"github.com/cloudlink-omega/storage/pkg/types"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -20,7 +22,7 @@ func (v *API) ResendVerificationEmail(c *fiber.Ctx) error {
 	}
 
 	// Check if the user flags indicate they are already verified
-	user := v.DB.GetUser(claims.ULID)
+	user, _ := v.DB.GetUser(claims.ULID)
 	registered := user.State.Read(constants.USER_IS_EMAIL_REGISTERED)
 	if registered {
 		return APIResult(c, fiber.StatusUnauthorized, "Email already verified!", nil)
@@ -34,7 +36,16 @@ func (v *API) ResendVerificationEmail(c *fiber.Ctx) error {
 	// Get the verification code in the database
 	code, err := v.DB.GetVerificationCode(claims.ID)
 	if err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.UserEvent{
+			UserID:     user.ID,
+			EventID:    "user_verify_failure",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
 
 	// Send the verification code to the user's email
@@ -51,6 +62,14 @@ func (v *API) ResendVerificationEmail(c *fiber.Ctx) error {
 		Regards,
 		- %s.`, claims.Username, v.ServerNickname, code, v.ServerNickname))
 
+	// Log the event
+	common.LogEvent(v.DB.DB, &types.UserEvent{
+		UserID:     user.ID,
+		EventID:    "user_verify_sent",
+		Details:    "",
+		Successful: true,
+	})
+
 	return APIResult(c, fiber.StatusOK, "OK", nil)
 }
 
@@ -61,7 +80,7 @@ func (v *API) VerifyVerificationEmail(c *fiber.Ctx) error {
 	}
 
 	// Check if the user flags indicate they are already verified
-	user := v.DB.GetUser(claims.ULID)
+	user, _ := v.DB.GetUser(claims.ULID)
 	registered := user.State.Read(constants.USER_IS_EMAIL_REGISTERED)
 	if registered {
 		return APIResult(c, fiber.StatusBadRequest, "Email already verified!", nil)
@@ -78,7 +97,16 @@ func (v *API) VerifyVerificationEmail(c *fiber.Ctx) error {
 
 	verified, err = v.DB.VerifyCode(claims.ULID, c.Query("code"))
 	if err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.UserEvent{
+			UserID:     user.ID,
+			EventID:    "user_verify_failure",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
 
 	if !verified {
@@ -87,7 +115,16 @@ func (v *API) VerifyVerificationEmail(c *fiber.Ctx) error {
 
 	// Remove verification codes from the database
 	if err := v.DB.DeleteVerificationCodes(claims.ULID); err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.UserEvent{
+			UserID:     user.ID,
+			EventID:    "user_verify_failure",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
 
 	// Set the user's state to "verified" and "active"
@@ -95,8 +132,25 @@ func (v *API) VerifyVerificationEmail(c *fiber.Ctx) error {
 	user.State.Set(constants.USER_IS_ACTIVE)
 
 	if err := v.DB.UpdateUserState(claims.ULID, user.State); err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.UserEvent{
+			UserID:     user.ID,
+			EventID:    "user_verify_failure",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
+
+	// Log the event
+	common.LogEvent(v.DB.DB, &types.UserEvent{
+		UserID:     user.ID,
+		EventID:    "user_verify_success",
+		Details:    "",
+		Successful: true,
+	})
 
 	return APIResult(c, fiber.StatusOK, "OK", nil)
 }
