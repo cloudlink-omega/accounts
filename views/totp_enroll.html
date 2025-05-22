@@ -1,0 +1,184 @@
+<!-- Primary content -->
+<div class="container mx-auto px-4 py-8">
+    <div class="container text-center justify-center mx-auto mb-4">
+        <span class="flex items-center justify-center pb-4 text-black dark:text-white">
+            <svg width="177" height="123" viewBox="0 0 177 123" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <g clip-path="url(#clip0_149_138)">
+                    <path fill-rule="evenodd" clip-rule="evenodd"
+                        d="M55.4632 48.5129H42.0789C24.3611 48.5129 10 62.875 10 80.5918C10 98.3086 24.3611 112.671 42.0789 112.671H134.32C152.037 112.671 166.399 98.3086 166.399 80.5918C166.399 62.875 152.037 48.5129 134.32 48.5129H120.935L120.166 39.3498C118.786 22.9153 104.995 10 88.1993 10C71.4038 10 57.6129 22.9153 56.2327 39.3498L55.4632 48.5129ZM130.131 38.5129C128.319 16.9423 110.237 0 88.1993 0C66.1613 0 48.0793 16.9423 46.2678 38.5129H42.0789C18.838 38.5129 0 57.3523 0 80.5918C0 103.831 18.838 122.671 42.0789 122.671H134.32C157.561 122.671 176.399 103.831 176.399 80.5918C176.399 57.3523 157.561 38.5129 134.32 38.5129H130.131Z"
+                        fill="currentColor" />
+                    <path
+                        d="M117.278 98.9703C117.278 101.364 115.338 103.304 112.944 103.304H97.5482C95.1549 103.304 93.2148 101.364 93.2148 98.9703V89.6158C93.2148 87.9408 94.1803 86.4159 95.6942 85.6991C101.585 82.911 105.391 76.9013 105.391 70.3889C105.391 61.0546 97.7967 53.4604 88.4622 53.4604C79.1277 53.4604 71.5337 61.0546 71.5337 70.3889C71.5337 76.9015 75.3399 82.911 81.2305 85.6991C82.7445 86.4156 83.71 87.9406 83.71 89.6158V98.9703C83.71 101.364 81.77 103.304 79.3766 103.304H63.9802C61.5869 103.304 59.6468 101.364 59.6468 98.9703C59.6468 96.577 61.5869 94.6369 63.9802 94.6369H75.0433V92.1875C71.8002 90.1894 69.0342 87.4877 66.9496 84.2607C64.2787 80.1262 62.8669 75.3296 62.8669 70.3889C62.8669 56.2755 74.3489 44.7936 88.4622 44.7936C102.576 44.7936 114.058 56.2755 114.058 70.3887C114.058 75.3294 112.646 80.1262 109.975 84.2605C107.891 87.4875 105.125 90.1894 101.882 92.1875V94.6369H112.944C115.338 94.6369 117.278 96.577 117.278 98.9703Z"
+                        fill="currentColor" />
+                </g>
+                <defs>
+                    <clipPath id="clip0_149_138">
+                        <rect width="176.399" height="122.671" fill="currentColor" />
+                    </clipPath>
+                </defs>
+            </svg>
+        </span>
+        <h1 class="text-5xl font-bold mt-2 mb-2 dark:text-white">Enroll TOTP</h1>
+        <span id="red_message"
+            class="hidden inline-flex items-center mt-4 gap-1 px-2 py-1 rounded-full text-2xl font-medium bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300"></span>
+        <span id="green_message"
+            class="hidden inline-flex items-center mt-4 gap-1 px-2 py-1 rounded-full text-2xl font-medium bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300"></span>
+        <span id="info_message"
+            class="hidden inline-flex items-center mt-4 gap-1 px-2 py-1 rounded-full text-2xl font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"></span>
+    </div>
+    <div>
+        <form id="totp_enroll" class="hidden">
+            <div class="flex flex-col justify-center items-center text-center">
+                <h2 class="text-3xl text-black dark:text-white mb-4">Set up TOTP</h2>
+                <p class="text-black dark:text-white mb-4">Scan this QR code with your authentication app, or enter the key manually. Then, enter the verification code below.</p>
+                <img id="totp_qr">
+                <h3 id="totp_secret" class="text-black dark:text-white mt-4"></h3>
+                <input type="number" id="totpcode" name="totpcode"
+                    class="text-2xl block text-center px-4 py-2 mt-4 mb-4 bg-white dark:bg-gray-900 text-black dark:text-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    placeholder="Verification code" required />
+                <button id="verifytotp" class="w-50 px-6 py-3 bg-white dark:bg-gray-600 hover:font-bold hover:bg-red-400 dark:hover:bg-red-400 text-black dark:text-white hover:text-white rounded-xl 
+                    font-medium transition-all duration-300 
+                    hover:shadow-lg hover:shadow-red-500/30 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 
+                    active:scale-95">
+                    <span class="flex items-center justify-center gap-2 text-2xl">
+                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M14 20V44" stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                            <path
+                                d="M30 11.76L28 20H39.66C40.281 20 40.8934 20.1446 41.4489 20.4223C42.0043 20.7 42.4874 21.1032 42.86 21.6C43.2326 22.0968 43.4844 22.6735 43.5955 23.2845C43.7066 23.8954 43.6739 24.5239 43.5 25.12L38.84 41.12C38.5977 41.9509 38.0924 42.6807 37.4 43.2C36.7076 43.7193 35.8655 44 35 44H8C6.93913 44 5.92172 43.5786 5.17157 42.8284C4.42143 42.0783 4 41.0609 4 40V24C4 22.9391 4.42143 21.9217 5.17157 21.1716C5.92172 20.4214 6.93913 20 8 20H13.52C14.2642 19.9996 14.9935 19.7916 15.6259 19.3994C16.2583 19.0073 16.7688 18.4464 17.1 17.78L24 4C24.9432 4.01168 25.8715 4.23634 26.7156 4.65719C27.5597 5.07805 28.2979 5.68421 28.8748 6.43041C29.4518 7.1766 29.8526 8.04352 30.0475 8.9664C30.2423 9.88929 30.2261 10.8443 30 11.76Z"
+                                stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        Verify
+                    </span>
+                </button>
+            </div>
+        </form>
+
+        <form id="totp_complete" class="hidden">
+            <div class="flex flex-col justify-center items-center text-center">
+                <h2 class="text-3xl text-black dark:text-white mb-4">Setup complete!</h2>
+                <p class="text-black dark:text-white">You have successfully set up two-factor authentication!</p>
+                <p class="text-black dark:text-white mt-2 mb-2">In the event that you loose your authenticator device, you will need to use one of the following backup codes below.</p>
+                <p class="text-black dark:text-white">Make sure you save them somewhere safe!</p>
+                <div class="border p-4 mt-4 mb-4 flex flex-wrap flex-col items-center justify-center gap-2">
+                    <p id="totp_recovery_code-1" class="text-black dark:text-white"></p>
+                    <p id="totp_recovery_code-2" class="text-black dark:text-white"></p>
+                    <p id="totp_recovery_code-3" class="text-black dark:text-white"></p>
+                    <p id="totp_recovery_code-4" class="text-black dark:text-white"></p>
+                    <p id="totp_recovery_code-5" class="text-black dark:text-white"></p>
+                    <p id="totp_recovery_code-6" class="text-black dark:text-white"></p>
+                    <p id="totp_recovery_code-7" class="text-black dark:text-white"></p>
+                    <p id="totp_recovery_code-8" class="text-black dark:text-white"></p>
+                    <p id="totp_recovery_code-9" class="text-black dark:text-white"></p>
+                    <p id="totp_recovery_code-10" class="text-black dark:text-white"></p>
+                </div>
+            </div>
+            <div class="w-full mt-4 flex flex-wrap flex-row items-center justify-center gap-3">
+                <a href="{{ .BaseURL }}/?redirect={{ .Redirect }}" class="w-50 px-6 py-3 bg-white dark:bg-gray-600 hover:font-bold hover:bg-red-400 dark:hover:bg-red-400 text-black dark:text-white hover:text-white rounded-xl 
+                    font-medium transition-all duration-300 
+                    hover:shadow-lg hover:shadow-red-500/30 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 
+                    active:scale-95">
+                    <span class="flex items-center justify-center gap-2 text-2xl">
+                        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M14 20V44" stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                            <path
+                                d="M30 11.76L28 20H39.66C40.281 20 40.8934 20.1446 41.4489 20.4223C42.0043 20.7 42.4874 21.1032 42.86 21.6C43.2326 22.0968 43.4844 22.6735 43.5955 23.2845C43.7066 23.8954 43.6739 24.5239 43.5 25.12L38.84 41.12C38.5977 41.9509 38.0924 42.6807 37.4 43.2C36.7076 43.7193 35.8655 44 35 44H8C6.93913 44 5.92172 43.5786 5.17157 42.8284C4.42143 42.0783 4 41.0609 4 40V24C4 22.9391 4.42143 21.9217 5.17157 21.1716C5.92172 20.4214 6.93913 20 8 20H13.52C14.2642 19.9996 14.9935 19.7916 15.6259 19.3994C16.2583 19.0073 16.7688 18.4464 17.1 17.78L24 4C24.9432 4.01168 25.8715 4.23634 26.7156 4.65719C27.5597 5.07805 28.2979 5.68421 28.8748 6.43041C29.4518 7.1766 29.8526 8.04352 30.0475 8.9664C30.2423 9.88929 30.2261 10.8443 30 11.76Z"
+                                stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        Let's go!
+                    </span>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script type="text/javascript" onload>
+    window.addEventListener('load', async () => {
+
+        // Show the loading overlay
+        $(`#loadingOverlay`)[0].classList.remove("hidden");
+        
+        // Request a new verification code and secret
+        response = await fetch("{{ .BaseURL }}/api/v1/begin-totp-enrollment");
+        message = await response.json();
+
+        // Artificial 1 second delay - It's called UX design, calm down
+        setTimeout(async () => {
+
+            // Hide the loading overlay
+            $(`#loadingOverlay`)[0].classList.add("hidden");
+
+            if (response.ok) {
+
+                // Show the enroll form
+                $("#totp_enroll")[0].classList.remove("hidden");
+
+                // Show the TOTP QR code and secret
+                $("#totp_qr")[0].src = message.data.qr;
+                $("#totp_secret")[0].textContent = message.data.key;
+                
+            } else {
+
+                // Hide the loading overlay
+                $(`#loadingOverlay`)[0].classList.add("hidden");
+
+                // Show the message
+                $(`#red_message`)[0].classList.remove("hidden");
+                $(`#red_message`)[0].textContent = message.result;
+            }
+
+        }, 1000);
+    });
+
+    // Verify TOTP
+    document.getElementById("verifytotp").addEventListener("click", async function (event) {
+        event.preventDefault(); // Prevent the default behavior
+
+        // Hide messages
+        $(`#green_message`)[0].classList.add("hidden");
+        $(`#info_message`)[0].classList.add("hidden");
+        $(`#red_message`)[0].classList.add("hidden");
+
+        // Show the loading overlay
+        $(`#loadingOverlay`)[0].classList.remove("hidden");
+
+        // Submit the code
+        // Submit for processing
+        response = await fetch("{{ .BaseURL }}/api/v1/verify-totp-enrollment?" + new URLSearchParams({ code: $(`#totpcode`)[0].value }));
+
+        // Artificial 1 second delay - It's called UX design, calm down
+        setTimeout(async () => {
+
+            // Hide the loading overlay
+            $(`#loadingOverlay`)[0].classList.add("hidden");
+
+            if (response.ok) {
+                message = await response.json();
+                recovery_codes = message.data.recovery_codes;
+                
+                // Display the recovery codes. TODO: this could be cleaner
+                $("#totp_recovery_code-1")[0].textContent = recovery_codes[0];
+                $("#totp_recovery_code-2")[0].textContent = recovery_codes[1];
+                $("#totp_recovery_code-3")[0].textContent = recovery_codes[2];
+                $("#totp_recovery_code-4")[0].textContent = recovery_codes[3];
+                $("#totp_recovery_code-5")[0].textContent = recovery_codes[4];
+                $("#totp_recovery_code-6")[0].textContent = recovery_codes[5];
+                $("#totp_recovery_code-7")[0].textContent = recovery_codes[6];
+                $("#totp_recovery_code-8")[0].textContent = recovery_codes[7];
+                $("#totp_recovery_code-9")[0].textContent = recovery_codes[8];
+                $("#totp_recovery_code-10")[0].textContent = recovery_codes[9];
+
+                // Display the end of setup
+                $("#totp_enroll")[0].classList.add("hidden");
+                $("#totp_complete")[0].classList.remove("hidden");
+
+            } else {
+                $(`#red_message`)[0].classList.remove("hidden");
+                $(`#red_message`)[0].textContent = message.result;
+            }
+        }, 1000);
+    });
+
+</script>

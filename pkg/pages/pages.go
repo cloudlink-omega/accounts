@@ -40,6 +40,7 @@ func New(router_path string, server_url string, api_url string, server_name stri
 		router.Get("/logout", p.Logout)
 		router.Get("/recovery", p.RecoveryLanding)
 		router.Get("/reset", p.ResetPassword)
+		router.Get("/totp_enroll", p.EnrollTOTP)
 		router.Get("/", p.Index)
 	}
 
