@@ -21,11 +21,17 @@ func (d *Database) GetUsers() []*types.User {
 }
 
 func (d *Database) GetUser(id string) (*types.User, error) {
-	var user types.User
+	if cached_user, ok := d.Cache.Get("user", id); ok {
+		return cached_user.(*types.User), nil
+	}
+
+	var user *types.User
 	if err := d.DB.First(&user, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
-	return &user, nil
+
+	d.Cache.Set("user", user, id)
+	return user, nil
 }
 
 func (d *Database) UpdateUserState(id string, state bitfield.Bitfield8) error {
@@ -43,7 +49,7 @@ func (d *Database) DoesNameExist(name string) (bool, error) {
 }
 
 func (d *Database) GetUserFromProvider(id string, provider string) (*types.User, error) {
-	var user types.User
+	var user *types.User
 	var err error
 
 	switch provider {
@@ -68,7 +74,7 @@ func (d *Database) GetUserFromProvider(id string, provider string) (*types.User,
 	} else if err != nil {
 		return nil, err
 	}
-	return &user, nil
+	return user, nil
 }
 
 func (d *Database) CreateUser(user *types.User) error {
@@ -78,36 +84,36 @@ func (d *Database) CreateUser(user *types.User) error {
 func (d *Database) LinkUserToProvider(user string, provider_user string, provider string) error {
 	switch provider {
 	case "google":
-		return d.DB.Create(&types.UserGoogle{UserID: user, GoogleID: provider_user}).Error
+		return d.DB.Create(&types.UserGoogle{UserID: user, ID: provider_user}).Error
 	case "discord":
-		return d.DB.Create(&types.UserDiscord{UserID: user, DiscordID: provider_user}).Error
+		return d.DB.Create(&types.UserDiscord{UserID: user, ID: provider_user}).Error
 	case "github":
-		return d.DB.Create(&types.UserGitHub{UserID: user, GitHubID: provider_user}).Error
+		return d.DB.Create(&types.UserGitHub{UserID: user, ID: provider_user}).Error
 	default:
 		return fmt.Errorf("unsupported provider: %s", provider)
 	}
 }
 
 func (d *Database) GetUserByEmail(email string) (*types.User, error) {
-	var user types.User
+	var user *types.User
 	if err := d.DB.First(&user, "email = ?", email).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return &user, nil
+	return user, nil
 }
 
 func (d *Database) GetSimilarUserByUsername(username string) (*types.User, error) {
-	var user types.User
+	var user *types.User
 	if err := d.DB.First(&user, "username LIKE ?", username).Error; err != nil {
 		if err.Error() == "record not found" {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return &user, nil
+	return user, nil
 }
 
 func (d *Database) CreateSession(user *types.User, session_id string, origin string, user_agent string, ip string, expires time.Time) error {
@@ -139,15 +145,15 @@ func (d *Database) GetSession(session_id string) (*types.UserSession, error) {
 		return nil, err
 	}
 
-	var user types.User
+	var user *types.User
 	if err := d.DB.First(&user, "id = ?", session.UserID).Error; err != nil {
 		return nil, err
 	}
 
 	// Decrypt fields
-	session.UserAgent, _ = d.Decrypt(&user, session.UserAgent)
-	session.Origin, _ = d.Decrypt(&user, session.Origin)
-	session.IP, _ = d.Decrypt(&user, session.IP)
+	session.UserAgent, _ = d.Decrypt(user, session.UserAgent)
+	session.Origin, _ = d.Decrypt(user, session.Origin)
+	session.IP, _ = d.Decrypt(user, session.IP)
 
 	// Destroy expired sessions
 	d.AutoDestroyExpiredSessions(user.ID)
@@ -158,7 +164,7 @@ func (d *Database) GetSession(session_id string) (*types.UserSession, error) {
 func (d *Database) GetUserLogs(user_id string, page int) ([]*constants.UserLog, int64, error) {
 	var logs []*constants.UserLog
 	var events []*types.UserEvent
-	result := d.DB.Preload("Event").Where("user_id = ?", user_id).Find(&events).Order("created_at ASC").Limit(20).Offset(page * 20)
+	result := d.DB.Preload("Event").Order("created_at DESC").Limit(20).Offset(page*20).Where("user_id = ?", user_id).Find(&events)
 
 	if result.Error != nil {
 		return nil, 0, result.Error

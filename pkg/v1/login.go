@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/cloudlink-omega/accounts/pkg/constants"
+	"github.com/cloudlink-omega/storage/pkg/common"
+	"github.com/cloudlink-omega/storage/pkg/types"
 	scrypt "github.com/elithrar/simple-scrypt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/pquerna/otp"
@@ -34,7 +36,15 @@ func (v *API) LoginEndpoint(c *fiber.Ctx) error {
 	// Check if the account exists.
 	user, err := v.DB.GetUserByEmail(creds.Email)
 	if err != nil {
-		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+		// Log the event
+		event_id := common.LogEvent(v.DB.DB, &types.SystemEvent{
+			EventID:    "get_user_error",
+			Details:    err.Error(),
+			Successful: false,
+		})
+
+		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 	}
 
 	if user == nil {
@@ -84,7 +94,15 @@ func (v *API) LoginEndpoint(c *fiber.Ctx) error {
 					Algorithm: otp.AlgorithmSHA512,
 				})
 			if err != nil {
-				return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+				// Log the event
+				event_id := common.LogEvent(v.DB.DB, &types.SystemEvent{
+					EventID:    "totp_error",
+					Details:    err.Error(),
+					Successful: false,
+				})
+
+				return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 			}
 
 			if !success {
@@ -97,7 +115,16 @@ func (v *API) LoginEndpoint(c *fiber.Ctx) error {
 			// Get backup codes
 			backupCodes, err := v.DB.GetRecoveryCodes(user)
 			if err != nil {
-				return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+				// Log the event
+				event_id := common.LogEvent(v.DB.DB, &types.UserEvent{
+					UserID:     user.ID,
+					EventID:    "recovery_code_retrieval_error",
+					Details:    err.Error(),
+					Successful: false,
+				})
+
+				return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 			}
 
 			// Check if there is a match in the backup codes
@@ -111,7 +138,16 @@ func (v *API) LoginEndpoint(c *fiber.Ctx) error {
 
 			// Update the backup codes
 			if err := v.DB.StoreRecoveryCodes(user, backupCodes); err != nil {
-				return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+
+				// Log the event
+				event_id := common.LogEvent(v.DB.DB, &types.UserEvent{
+					UserID:     user.ID,
+					EventID:    "recovery_code_store_error",
+					Details:    err.Error(),
+					Successful: false,
+				})
+
+				return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil, event_id)
 			}
 		}
 	}
@@ -120,6 +156,14 @@ func (v *API) LoginEndpoint(c *fiber.Ctx) error {
 	if err := v.CreateSession(c, user, time.Now().Add(24*time.Hour)); err != nil {
 		return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
+
+	// Log the event
+	common.LogEvent(v.DB.DB, &types.UserEvent{
+		UserID:     user.ID,
+		EventID:    "user_login",
+		Details:    "Logged in using local provider",
+		Successful: true,
+	})
 
 	return APIResult(c, fiber.StatusOK, "OK", nil)
 }

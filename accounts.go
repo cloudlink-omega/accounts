@@ -10,6 +10,7 @@ import (
 	"github.com/cloudlink-omega/accounts/pkg/structs"
 	v1 "github.com/cloudlink-omega/accounts/pkg/v1"
 	"github.com/cloudlink-omega/storage/pkg/common"
+	"github.com/cloudlink-omega/storage/pkg/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/filesystem"
 	"github.com/gofiber/template/html/v2"
@@ -66,6 +67,9 @@ func New(
 	// Database configuration. Passed into GORM.
 	db *gorm.DB,
 
+	// Cache interface.
+	cache *types.DBCache,
+
 	// Email configuration
 	email_config *structs.MailConfig,
 
@@ -83,7 +87,7 @@ func New(
 	}
 
 	// Initialize database
-	accounts_db := &database.Database{DB: db, ServerSecret: server_secret}
+	accounts_db := &database.Database{DB: db, ServerSecret: server_secret, Cache: cache}
 	if len(defer_migrate) > 0 && !defer_migrate[0] {
 		if err := common.MigrateAndSeed(accounts_db.DB); err != nil {
 			panic(err)
