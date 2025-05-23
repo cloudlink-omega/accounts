@@ -8,6 +8,7 @@ import (
 	oauth "github.com/cloudlink-omega/accounts/pkg/oauth"
 	pages "github.com/cloudlink-omega/accounts/pkg/pages"
 	"github.com/cloudlink-omega/accounts/pkg/structs"
+	v0 "github.com/cloudlink-omega/accounts/pkg/v0"
 	v1 "github.com/cloudlink-omega/accounts/pkg/v1"
 	"github.com/cloudlink-omega/storage/pkg/common"
 	"github.com/cloudlink-omega/storage/pkg/types"
@@ -25,6 +26,7 @@ var embedded_templates embed.FS
 
 type Accounts struct {
 	APIv1 *v1.API
+	APIv0 *v0.API
 	Page  *pages.Pages
 	OAuth *oauth.OAuth
 	App   *fiber.App
@@ -99,6 +101,7 @@ func New(
 		Page:  pages.New(router_path, server_url, api_url, server_name, primary_website, server_secret, accounts_db),
 		OAuth: oauth.New(router_path, server_url, enforce_https, api_domain, server_secret, accounts_db),
 		APIv1: v1.New(router_path, enforce_https, api_domain, server_url, server_secret, accounts_db, email_config, server_name, bypass_email_registration),
+		APIv0: v0.New(router_path, enforce_https, api_domain, server_url, server_secret, accounts_db, email_config, server_name, bypass_email_registration),
 		DB:    accounts_db,
 	}
 
@@ -114,6 +117,7 @@ func New(
 	// Configure routes
 	srv.App.Route("/oauth", srv.OAuth.Routes)
 	srv.App.Route("/api/v1", srv.APIv1.Routes)
+	srv.App.Route("/api/v0", srv.APIv0.Routes)
 	srv.App.Route("/", srv.Page.Routes)
 
 	// Configure static
