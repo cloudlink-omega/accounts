@@ -34,6 +34,11 @@ type Credentials struct {
 	BackupCode string `json:"backup_code,omitempty" form:"backup_code,omitempty"`
 }
 
+type ValidationData struct {
+	VerifiedEmail bool `json:"verified_email"`
+	*structs.Claims
+}
+
 func New(router_path string, enforce_https bool, api_domain string, server_url string, server_secret string, db *database.Database, mail_config *structs.MailConfig, nickname string, bypass_email bool) *API {
 
 	// Create new instance
@@ -68,6 +73,9 @@ func New(router_path string, enforce_https bool, api_domain string, server_url s
 		// Verification
 		router.Post("/resend-verify", v.ResendVerificationEmail)
 		router.Post("/verify", v.VerifyVerificationEmail)
+
+		// Utilities
+		router.Post("/validate", v.ValidateEndpoint)
 	}
 
 	// Return created instance
