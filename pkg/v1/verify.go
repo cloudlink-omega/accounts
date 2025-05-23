@@ -28,11 +28,6 @@ func (v *API) ResendVerificationEmail(c *fiber.Ctx) error {
 		return APIResult(c, fiber.StatusUnauthorized, "Email already verified!", nil)
 	}
 
-	// Read the user ID from the request
-	if c.Query("code") == "" {
-		return APIResult(c, fiber.StatusUnauthorized, "Missing verification code.", nil)
-	}
-
 	// Get the verification code in the database
 	code, err := v.DB.GetVerificationCode(claims.ID)
 	if err != nil {
