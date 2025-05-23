@@ -165,6 +165,6 @@ func (v *API) LoginEndpoint(c *fiber.Ctx) error {
 			Successful: true,
 		})
 
-		return c.Status(fiber.StatusCreated).SendString(token)
+		return c.Status(fiber.StatusOK).SendString(token)
 	}
 }
