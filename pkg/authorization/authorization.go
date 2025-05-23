@@ -31,7 +31,7 @@ func (s *Auth) GetNormalClaims(c *fiber.Ctx) *structs.Claims {
 	if cookie == "" {
 		return nil
 	}
-	return s.GetClaimsFromToken(c, cookie)
+	return s.GetClaimsFromToken(cookie)
 }
 
 func (s *Auth) GetRecoveryClaims(c *fiber.Ctx) *structs.Claims {
@@ -39,10 +39,10 @@ func (s *Auth) GetRecoveryClaims(c *fiber.Ctx) *structs.Claims {
 	if cookie == "" {
 		return nil
 	}
-	return s.GetClaimsFromToken(c, cookie)
+	return s.GetClaimsFromToken(cookie)
 }
 
-func (s *Auth) GetClaimsFromToken(c *fiber.Ctx, token string) *structs.Claims {
+func (s *Auth) GetClaimsFromToken(token string) *structs.Claims {
 	claims := &structs.Claims{}
 	tkn, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (any, error) {
 		return []byte(s.SessionKey), nil
@@ -75,7 +75,7 @@ func (s *Auth) ValidFromNormal(c *fiber.Ctx) bool {
 	if cookie == "" {
 		return false
 	}
-	return s.ValidFromToken(c, cookie)
+	return s.ValidFromToken(cookie)
 }
 
 func (s *Auth) ValidFromRecovery(c *fiber.Ctx) bool {
@@ -83,10 +83,10 @@ func (s *Auth) ValidFromRecovery(c *fiber.Ctx) bool {
 	if cookie == "" {
 		return false
 	}
-	return s.ValidFromToken(c, cookie)
+	return s.ValidFromToken(cookie)
 }
 
-func (s *Auth) ValidFromToken(c *fiber.Ctx, token string) bool {
+func (s *Auth) ValidFromToken(token string) bool {
 	tkn, err := jwt.Parse(token, func(token *jwt.Token) (any, error) {
 		return []byte(s.SessionKey), nil
 	})
