@@ -62,12 +62,12 @@ func New(router_path string, enforce_https bool, api_domain string, server_url s
 
 		// General
 		router.Post("/login", v.LoginEndpoint)
-		router.Get("/logout", v.LogoutEndpoint)
+		router.Post("/logout", v.LogoutEndpoint)
 		router.Post("/register", v.RegisterEndpoint)
 
 		// Verification
 		router.Post("/resend-verify", v.ResendVerificationEmail)
-		router.Get("/verify", v.VerifyVerificationEmail)
+		router.Post("/verify", v.VerifyVerificationEmail)
 	}
 
 	// Return created instance
