@@ -78,7 +78,7 @@ func New(router_path string, enforce_https bool, api_domain string, server_url s
 		router.Post("/reset-password", v.ResetPasswordEndpoint)
 
 		// Verification
-		router.Post("/resend-verify", v.ResendVerificationEmail)
+		router.Get("/resend-verify", v.ResendVerificationEmail)
 		router.Get("/verify", v.VerifyVerificationEmail)
 
 		// Utilities
