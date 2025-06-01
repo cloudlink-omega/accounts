@@ -39,13 +39,17 @@ func (d *Database) VerifyCode(user string, code string) (bool, error) {
 }
 
 func (d *Database) GetVerificationCode(user string) (string, error) {
-	var vc types.Verification
-	err := d.DB.
+	var vc *types.Verification
+	res := d.DB.
 		Where("user_id = ?", user).
-		First(&vc).Error
+		First(&vc)
 
-	if err != nil {
-		return "", err
+	if res.Error == gorm.ErrRecordNotFound {
+		return "", nil
+	}
+
+	if res.Error != nil {
+		return "", res.Error
 	}
 
 	// Renew the expiration time
