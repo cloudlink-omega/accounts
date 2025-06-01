@@ -18,6 +18,7 @@ func (p *Pages) Index(c *fiber.Ctx) error {
 			"OAuthOnly":      user.State.Read(constants.USER_IS_OAUTH_ONLY),
 			"Profile":        "/assets/static/img/placeholder.png",
 			"User":           user.Username,
+			"VerifyRequired": !user.State.Read(constants.USER_IS_EMAIL_REGISTERED),
 			"Redirect":       sanitizer.Sanitized(c, c.Query("redirect")),
 		}, "views/layout")
 
