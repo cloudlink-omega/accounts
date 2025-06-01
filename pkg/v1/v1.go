@@ -92,6 +92,11 @@ func New(router_path string, enforce_https bool, api_domain string, server_url s
 		// Recover account
 		router.Post("/send-recovery", v.SendRecoveryEmail)
 		router.Post("/confirm-recovery", v.ConfirmRecoveryEmail)
+
+		// Health check
+		router.Get("/", func(c *fiber.Ctx) error {
+			return c.SendString("OK")
+		})
 	}
 
 	// Return created instance

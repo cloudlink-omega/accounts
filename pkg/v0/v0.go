@@ -76,6 +76,11 @@ func New(router_path string, enforce_https bool, api_domain string, server_url s
 
 		// Utilities
 		router.Post("/validate", v.ValidateEndpoint)
+
+		// Health check
+		router.Get("/", func(c *fiber.Ctx) error {
+			return c.SendString("OK")
+		})
 	}
 
 	// Return created instance
