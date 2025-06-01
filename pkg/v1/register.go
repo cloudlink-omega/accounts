@@ -177,14 +177,14 @@ func (v *API) RegisterEndpoint(c *fiber.Ctx) error {
 		}, fmt.Sprintf(
 			`Hello %s, You are receiving this email because you recently created a CloudLink Omega account on server %s.
 
-			To verify your account, please use the following verification code: %s.
+		To verify your account, please use the following verification code: %s.
 
-			This code will expire in 15 minutes.
+		This code will expire in 15 minutes.
 
-			If you did not create this account, you can safely ignore this email.
+		If you did not create this account, you can safely ignore this email.
 
-			Regards,
-			- %s.`, user.Username, v.ServerNickname, code, v.ServerNickname),
+		Regards,
+		 - %s.`, user.Username, v.ServerNickname, code, v.ServerNickname),
 		)
 
 		// Log the event
@@ -194,6 +194,12 @@ func (v *API) RegisterEndpoint(c *fiber.Ctx) error {
 			Details:    "",
 			Successful: true,
 		})
+
+		// Set active flag
+		user.State.Set(constants.USER_IS_ACTIVE)
+		if err := v.DB.UpdateUserState(user.ID, user.State); err != nil {
+			return APIResult(c, fiber.StatusInternalServerError, err.Error(), nil)
+		}
 
 		return APIResult(c, fiber.StatusOK, "OK", nil)
 	}

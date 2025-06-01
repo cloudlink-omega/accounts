@@ -17,6 +17,25 @@
         {{ end }}
 
         {{ if not .Redirect }}
+        {{ if .VerifyRequired }}
+        <a href="{{ .BaseURL }}/verify?redirect={{ .Redirect }}" type="button" class="flex flex-wrap block flex-column gap-3 justify-center mt-2 px-4">
+            <button id="verify" type="button" class="w-full px-6 py-3 bg-white dark:bg-gray-600 hover:font-bold hover:bg-red-400 dark:hover:bg-red-400 text-black dark:text-white hover:text-white rounded-xl 
+                    font-medium transition-all duration-300 
+                    hover:shadow-lg hover:shadow-red-500/30 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 
+                    active:scale-95">
+            <span class="flex items-center justify-center gap-2 text-2xl">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M14 20V44" stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <path
+                        d="M30 11.76L28 20H39.66C40.281 20 40.8934 20.1446 41.4489 20.4223C42.0043 20.7 42.4874 21.1032 42.86 21.6C43.2326 22.0968 43.4844 22.6735 43.5955 23.2845C43.7066 23.8954 43.6739 24.5239 43.5 25.12L38.84 41.12C38.5977 41.9509 38.0924 42.6807 37.4 43.2C36.7076 43.7193 35.8655 44 35 44H8C6.93913 44 5.92172 43.5786 5.17157 42.8284C4.42143 42.0783 4 41.0609 4 40V24C4 22.9391 4.42143 21.9217 5.17157 21.1716C5.92172 20.4214 6.93913 20 8 20H13.52C14.2642 19.9996 14.9935 19.7916 15.6259 19.3994C16.2583 19.0073 16.7688 18.4464 17.1 17.78L24 4C24.9432 4.01168 25.8715 4.23634 26.7156 4.65719C27.5597 5.07805 28.2979 5.68421 28.8748 6.43041C29.4518 7.1766 29.8526 8.04352 30.0475 8.9664C30.2423 9.88929 30.2261 10.8443 30 11.76Z"
+                        stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                Verify Email
+            </span>
+            </button>
+        </a>
+        {{ else }}
         <div class="flex flex-wrap block flex-column gap-3 justify-center mt-2 px-4">
             <button id="go" class="w-full px-6 py-3 bg-white dark:bg-gray-600 hover:font-bold hover:bg-red-400 dark:hover:bg-red-400 text-black dark:text-white hover:text-white rounded-xl 
                     font-medium transition-all duration-300 
@@ -33,6 +52,7 @@
             </span>
             </button>
         </div>
+        {{ end }}
 
         <a href="{{ .BaseURL }}/logout?redirect={{ .Redirect }}" type="button" class="flex flex-wrap block flex-column gap-3 justify-center mt-2 px-4">
             <button id="logout" type="button" class="w-full px-6 py-3 bg-white dark:bg-gray-600 hover:font-bold hover:bg-red-400 dark:hover:bg-red-400 text-black dark:text-white hover:text-white rounded-xl 
@@ -80,7 +100,7 @@
 
 <!-- Auto-Redirect script -->
 <script type="text/javascript" onload>
-if ("{{ .Redirect }}" != "") {
+if ((!"{{ .VerifyRequired }}") && ("{{ .Redirect }}" != "")) {
     setTimeout(() => {
         window.location.href = "{{ .Redirect }}";
     }, 3000);
