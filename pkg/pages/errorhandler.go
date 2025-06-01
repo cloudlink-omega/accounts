@@ -31,12 +31,23 @@ func (p *Pages) ErrorPage(c *fiber.Ctx, err error) error {
 		match = !match && strings.Contains(request_content_type, t)
 	}
 
-	if match {
-		return c.SendString(err.Error())
+	if err != nil {
+		if match {
+			return c.SendString(err.Error())
+		} else {
+			return c.Render("views/error", &map[string]string{
+				"Message":    err.Error(),
+				"Status":     fmt.Sprint(status_code),
+				"ServerName": p.ServerName})
+		}
 	} else {
-		return c.Render("views/error", &map[string]string{
-			"Message":    err.Error(),
-			"Status":     fmt.Sprint(status_code),
-			"ServerName": p.ServerName})
+		if match {
+			return c.SendString("Hm... Something went wrong.")
+		} else {
+			return c.Render("views/error", &map[string]string{
+				"Message":    "Hm... Something went wrong.",
+				"Status":     fmt.Sprint(status_code),
+				"ServerName": p.ServerName})
+		}
 	}
 }
