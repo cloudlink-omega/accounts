@@ -78,6 +78,9 @@ func New(
 	// Set true to bypass email verification during development
 	bypass_email_registration bool,
 
+	// Set true to completely disable accounts dependency
+	bypass_db bool,
+
 	// Set to "true" to defer database migration and seeding
 	defer_migrate ...bool,
 
@@ -90,7 +93,7 @@ func New(
 
 	// Initialize database
 	accounts_db := &database.Database{DB: db, ServerSecret: server_secret, Cache: cache}
-	if len(defer_migrate) > 0 && !defer_migrate[0] {
+	if !bypass_db && len(defer_migrate) > 0 && !defer_migrate[0] {
 		if err := common.MigrateAndSeed(accounts_db.DB); err != nil {
 			panic(err)
 		}
@@ -111,26 +114,39 @@ func New(
 	// Initialize template engine
 	engine := html.NewFileSystem(http.FS(embedded_templates), ".html")
 
+	var config fiber.Config
+	if bypass_db {
+		config = fiber.Config{Views: engine}
+	} else {
+		config = fiber.Config{Views: engine, ErrorHandler: srv.Page.ErrorPage}
+	}
+
 	// Initialize app
-	srv.App = fiber.New(fiber.Config{Views: engine, ErrorHandler: srv.Page.ErrorPage})
+	srv.App = fiber.New(config)
 
 	// Configure routes
-	srv.App.Route("/oauth", srv.OAuth.Routes)
 	srv.App.Route("/api/v1", srv.APIv1.Routes)
 	srv.App.Route("/api/v0", srv.APIv0.Routes)
-	srv.App.Route("/", srv.Page.Routes)
 
-	// Configure static
-	srv.App.Use("/assets", filesystem.New(filesystem.Config{
-		Root:       http.FS(embedded_assets),
-		PathPrefix: "assets",
-		Browse:     false,
-	}))
+	if !bypass_db {
 
-	// Configure 404 handler
-	srv.App.Use(func(c *fiber.Ctx) error {
-		return srv.Page.ErrorPage(c, c.Context().Err())
-	})
+		srv.App.Route("/oauth", srv.OAuth.Routes)
+
+		// Enable frontend route
+		srv.App.Route("/", srv.Page.Routes)
+		
+		// Configure static
+		srv.App.Use("/assets", filesystem.New(filesystem.Config{
+			Root:       http.FS(embedded_assets),
+			PathPrefix: "assets",
+			Browse:     false,
+		}))
+
+		// Configure 404 handler
+		srv.App.Use(func(c *fiber.Ctx) error {
+			return srv.Page.ErrorPage(c, c.Context().Err())
+		})
+	}
 
 	// Return created instance
 	return srv
