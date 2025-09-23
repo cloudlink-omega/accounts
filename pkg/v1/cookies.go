@@ -9,11 +9,32 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
+func (v *API) SetGuestCookie(user *types.Guest, session_id string, expiration time.Time, c *fiber.Ctx) {
+	token := v.Auth.Create(&structs.Claims{
+		ClaimType:        0,
+		SessionID:        session_id,
+		Username:         user.Username,
+		IsGuest:          true,
+		ULID:             user.ID,
+		IdentityProvider: "local",
+	}, expiration)
+	c.Cookie(&fiber.Cookie{
+		Name:     "clomega-authorization",
+		Value:    token,
+		Path:     "/",
+		Expires:  expiration,
+		Secure:   v.EnforceHTTPS,
+		Domain:   domain.GetDomain(c.Hostname()),
+		SameSite: fiber.CookieSameSiteNoneMode,
+	})
+}
+
 func (v *API) SetCookie(user *types.User, session_id string, expiration time.Time, c *fiber.Ctx) {
 	token := v.Auth.Create(&structs.Claims{
 		ClaimType:        0,
 		SessionID:        session_id,
 		Email:            user.Email,
+		IsGuest:          false,
 		Username:         user.Username,
 		ULID:             user.ID,
 		IdentityProvider: "local",

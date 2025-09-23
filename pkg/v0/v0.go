@@ -24,6 +24,11 @@ type API struct {
 	BypassEmailRegistration bool
 }
 
+type GuestArgs struct {
+	Token    string `json:"token,omitempty" form:"token,omitempty"`
+	Username string `json:"username,omitempty" form:"username,omitempty"`
+}
+
 type Credentials struct {
 	Token      string `json:"token,omitempty" form:"token,omitempty"`
 	Code       string `json:"code,omitempty" form:"code,omitempty"`
@@ -66,6 +71,7 @@ func New(router_path string, enforce_https bool, api_domain string, server_url s
 		}))
 
 		// General
+		router.Post("/guest-login", v.GuestLoginEndpoint)
 		router.Post("/login", v.LoginEndpoint)
 		router.Post("/logout", v.LogoutEndpoint)
 		router.Post("/register", v.RegisterEndpoint)
@@ -98,10 +104,33 @@ func (v *API) CreateSessionToken(c *fiber.Ctx, user *types.User, session_expiry 
 
 	token := v.Auth.Create(&structs.Claims{
 		ClaimType:        0,
+		IsGuest:          false,
 		SessionID:        sessionID,
 		Email:            user.Email,
 		Username:         user.Username,
 		ULID:             user.ID,
+		IdentityProvider: "local",
+	}, session_expiry)
+
+	// set session token
+	return token, nil
+}
+
+func (v *API) CreateGuestToken(c *fiber.Ctx, guest *types.Guest, session_expiry time.Time) (string, error) {
+	sessionID := ulid.Make().String()
+
+	// Store the session ID in the database
+	err := v.DB.CreateGuestSession(guest, sessionID, string(c.Request().Header.Peek("Origin")), string(c.Request().Header.Peek("User-Agent")), c.IP(), session_expiry)
+	if err != nil {
+		return "", err
+	}
+
+	token := v.Auth.Create(&structs.Claims{
+		ClaimType:        0,
+		IsGuest:          true,
+		SessionID:        sessionID,
+		Username:         guest.Username,
+		ULID:             guest.ID,
 		IdentityProvider: "local",
 	}, session_expiry)
 

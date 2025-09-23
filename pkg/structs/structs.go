@@ -48,6 +48,7 @@ type APIv0 struct {
 type Claims struct {
 	ClaimType        uint8  `json:"claim_type"`
 	SessionID        string `json:"session_id,omitempty"`
+	IsGuest          bool   `json:"is_guest,omitempty"`
 	Email            string `json:"email,omitempty"`
 	Username         string `json:"username,omitempty"`
 	ULID             string `json:"ulid,omitempty"`

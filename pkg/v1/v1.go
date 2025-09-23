@@ -30,6 +30,11 @@ type ValidationData struct {
 	*structs.Claims
 }
 
+type GuestArgs struct {
+	Token    string `json:"token,omitempty" form:"token,omitempty"`
+	Username string `json:"username,omitempty" form:"username,omitempty"`
+}
+
 type Credentials struct {
 	Username   string `json:"username" form:"username"`
 	Email      string `json:"email" form:"email"`
@@ -72,6 +77,8 @@ func New(router_path string, enforce_https bool, api_domain string, server_url s
 		}))
 
 		// General
+		router.Post("/guest-login", v.GuestLoginEndpoint)
+
 		router.Post("/login", v.LoginEndpoint)
 		router.Get("/logout", v.LogoutEndpoint)
 		router.Post("/register", v.RegisterEndpoint)
@@ -125,5 +132,18 @@ func (v *API) CreateSession(c *fiber.Ctx, user *types.User, session_expiry time.
 		return err
 	}
 	v.SetCookie(user, sessionID.String(), session_expiry, c)
+	return nil
+}
+
+func (v *API) CreateGuestSession(c *fiber.Ctx, guest *types.Guest, session_expiry time.Time) error {
+	sessionID := ulid.Make().String()
+
+	// Store the session ID in the database
+	err := v.DB.CreateGuestSession(guest, sessionID, string(c.Request().Header.Peek("Origin")), string(c.Request().Header.Peek("User-Agent")), c.IP(), session_expiry)
+	if err != nil {
+		return err
+	}
+
+	v.SetGuestCookie(guest, sessionID, session_expiry, c)
 	return nil
 }

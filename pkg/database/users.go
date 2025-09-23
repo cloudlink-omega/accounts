@@ -1,12 +1,14 @@
 package database
 
 import (
+	"encoding/base64"
 	"fmt"
 	"math"
 	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v2/log"
+	"github.com/oklog/ulid/v2"
 
 	"github.com/cloudlink-omega/accounts/pkg/constants"
 	"github.com/cloudlink-omega/storage/pkg/bitfield"
@@ -94,6 +96,28 @@ func (d *Database) LinkUserToProvider(user string, provider_user string, provide
 	}
 }
 
+func (d *Database) CreateGuestAccount(username string) (*types.Guest, error) {
+
+	if err := d.AutoDestroyExpiredGuests(); err != nil {
+		return nil, err
+	}
+	if err := d.AutoDestroyExpiredGuestSessions(); err != nil {
+		return nil, err
+	}
+
+	userid := ulid.Make().String()
+	guest := &types.Guest{
+		ID:        userid,
+		Username:  "GUEST_" + username,
+		CreatedAt: time.Now(),
+		ExpiresAt: time.Now().Add(time.Hour),
+	}
+	if err := d.DB.Create(guest).Error; err != nil {
+		return nil, err
+	}
+	return guest, nil
+}
+
 func (d *Database) GetUserByEmail(email string) (*types.User, error) {
 	var user *types.User
 	if err := d.DB.First(&user, "email = ?", email).Error; err != nil {
@@ -136,13 +160,43 @@ func (d *Database) CreateSession(user *types.User, session_id string, origin str
 	}).Error
 }
 
+func (d *Database) CreateGuestSession(guest *types.Guest, session_id string, origin string, user_agent string, ip string, expires time.Time) error {
+
+	server_secret_decoded, err := base64.StdEncoding.DecodeString(d.ServerSecret)
+	if err != nil {
+		panic(err)
+	}
+
+	// Encrypt fields (yes, even for guests)
+	user_agent = MustEncrypt(user_agent, server_secret_decoded)
+	origin = MustEncrypt(origin, server_secret_decoded)
+	ip = MustEncrypt(ip, server_secret_decoded)
+
+	return d.DB.Create(&types.GuestSession{
+		ID:        session_id,
+		UserAgent: user_agent,
+		UserID:    guest.ID,
+		Origin:    origin,
+		IP:        ip,
+		ExpiresAt: expires,
+	}).Error
+}
+
 func (d *Database) GetSession(session_id string) (*types.UserSession, error) {
+
 	var session types.UserSession
 	if err := d.DB.First(&session, "id = ?", session_id).Error; err != nil {
 		if err.Error() == "record not found" {
 			return nil, nil
 		}
 		return nil, err
+	}
+
+	// Destroy expired sessions
+	d.AutoDestroyExpiredSessions(session.UserID)
+
+	if session.ExpiresAt.Before(time.Now()) {
+		return nil, nil
 	}
 
 	var user *types.User
@@ -155,8 +209,41 @@ func (d *Database) GetSession(session_id string) (*types.UserSession, error) {
 	session.Origin, _ = d.Decrypt(user, session.Origin)
 	session.IP, _ = d.Decrypt(user, session.IP)
 
+	return &session, nil
+}
+
+func (d *Database) GetGuestSession(session_id string) (*types.GuestSession, error) {
+
 	// Destroy expired sessions
-	d.AutoDestroyExpiredSessions(user.ID)
+	d.AutoDestroyExpiredGuests()
+	d.AutoDestroyExpiredGuestSessions()
+
+	var session types.GuestSession
+	if err := d.DB.First(&session, "id = ?", session_id).Error; err != nil {
+		if err.Error() == "record not found" {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	if session.ExpiresAt.Before(time.Now()) {
+		return nil, nil
+	}
+
+	var user *types.Guest
+	if err := d.DB.First(&user, "id = ?", session.UserID).Error; err != nil {
+		return nil, err
+	}
+
+	server_secret_decoded, err := base64.StdEncoding.DecodeString(d.ServerSecret)
+	if err != nil {
+		panic(err)
+	}
+
+	// Decrypt fields
+	session.UserAgent = MustDecrypt(session.UserAgent, server_secret_decoded)
+	session.Origin = MustDecrypt(session.Origin, server_secret_decoded)
+	session.IP = MustDecrypt(session.IP, server_secret_decoded)
 
 	return &session, nil
 }
@@ -222,6 +309,14 @@ func (d *Database) GetAllSessions(user_id string) ([]*types.UserSession, error) 
 
 func (d *Database) AutoDestroyExpiredSessions(user_id string) error {
 	return d.DB.Where("user_id = ? AND expires_at < ?", user_id, time.Now()).Delete(&types.UserSession{}).Error
+}
+
+func (d *Database) AutoDestroyExpiredGuestSessions() error {
+	return d.DB.Where("expires_at < ?", time.Now()).Delete(&types.GuestSession{}).Error
+}
+
+func (d *Database) AutoDestroyExpiredGuests() error {
+	return d.DB.Where("expires_at < ?", time.Now()).Delete(&types.Guest{}).Error
 }
 
 func (d *Database) DeleteSession(session_id string) error {
